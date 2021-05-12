@@ -101,8 +101,8 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
         Xv_test = np.concatenate([Xv_test, ohe_test], axis=1)
 
         # ---- variables
-        n_epochs = 40
-        batch_size = 38
+        n_epochs = 20
+        batch_size = 40
 
         if model_type == 'RNN_MIMO':
             model = func(Xt_train, Xv_train, nb_rnn=1, nbunits_rnn=32, nbunits_fc=32, verbose=False)
