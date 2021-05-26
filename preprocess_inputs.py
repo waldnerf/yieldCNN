@@ -22,6 +22,20 @@ def get_season(date_, start_month, sep='-'):
         season = int(date_s[0])
     return season
 
+
+def retain_regions(df, groups, key, target, cum=0.9):
+    my_list = []
+
+    for i in df[groups].unique():
+        df_i = df.loc[df[groups] == i, :].sort_values(by=[key], ascending=False).copy().reset_index()
+        df_i['key_pct'] = df_i.loc[:, key] / df_i[key].sum()
+        df_i['key_cumsum'] = df_i['key_pct'].cumsum()
+        idx = df_i.index[(df_i['key_cumsum'] < cum)].max()+1
+        df_i = df_i.iloc[0:idx+1, :].copy()
+
+        my_list = my_list + list(df_i[target])
+    return list(set(my_list))
+
 def main(fn_features, fn_stats,  step_dic, month_sos, fn_out=''):
     df_raw = pd.read_csv(fn_features)
     # Keep columns of interest
@@ -42,8 +56,13 @@ def main(fn_features, fn_stats,  step_dic, month_sos, fn_out=''):
     df_wide.reset_index(inplace=True)
 
     df_stats = pd.read_csv(fn_stats)
-    df_stats = df_stats[['Year', 'Area', 'Yield', 'ASAP1_ID', 'Crop_name']]
+    df_stats = df_stats[['Year', 'Area', 'Yield', 'Production', 'ASAP1_ID', 'Crop_name']].copy()
     df_stats['Crop_name'] = df_stats['Crop_name'].apply(lambda x: x.replace(' ', ''))
+    # Get main producing regions
+    df_filter = df_stats.groupby(['ASAP1_ID', 'Crop_name']).agg({'Production': 'mean'}).reset_index()
+    region_ids = retain_regions(df_filter, groups='Crop_name', key='Production', target='ASAP1_ID')
+    df_stats = df_stats.loc[df_stats['ASAP1_ID'].isin(region_ids), :].copy()
+
 
     df_statsw = df_stats.pivot_table(index=['ASAP1_ID', 'Year'],
                                      columns=['Crop_name'],

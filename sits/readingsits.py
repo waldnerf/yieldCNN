@@ -46,7 +46,7 @@ def data_reader(name_file):
     region_ids = data.ASAP1_ID.astype(dtype='uint16').values
 
     # Year
-    years = data.ASAP1_ID.astype(dtype='uint8').values
+    years = data.Year.astype(dtype='int64').values
 
     # Area
     my_cols = list(data.columns[data.columns.str.startswith('Area')])
@@ -129,8 +129,11 @@ def save_minMaxVal(minmax_file, min_per, max_per):
 
 
 # -----------------------------------------------------------------------
-def normalizingData(X, min_per, max_per):
-    return (X - min_per) / (max_per - min_per)
+def normalizingData(X, min_per, max_per, back=False):
+    if back == True:
+        return (X - min_per) / (max_per - min_per)
+    else:
+        return X * (max_per - min_per) + min_per
 
 
 # -----------------------------------------------------------------------

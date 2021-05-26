@@ -5,6 +5,8 @@ import argparse
 import random
 from pycm import *
 import shutil
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
 
 from deeplearning.architecture_complexity import *
 from outputfiles.plot import *
@@ -48,9 +50,12 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
     region_ohe = add_one_hot(region_id)
 
     # ---- Get model
-    model_type = 'CNN_SIMO'
+    model_type = 'CNNw_SISO'
 
     switcher = {
+        'CNNw_SISO': Archi_CNNw_SISO,
+        'CNNw_SIMO': Archi_CNNw_SIMO,
+        'CNNw_MIMO': Archi_CNNw_MIMO,
         'CNN_SIMO': Archi_CONV_SIMO,
         'CNN_MIMO': Archi_CONV_MIMO,
         'RNN_SIMO': Archi_RNN_FC_SIMO,
@@ -64,13 +69,13 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
     random.seed(4)
 
     df_out = None
-    for val_y in np.unique(groups):
-        test_y = random.choice([x for x in np.unique(groups) if x != val_y])
-        train_y = [x for x in np.unique(groups) if x != val_y and x != test_y]
+    for val_i in np.unique(groups):
+        test_i = random.choice([x for x in np.unique(groups) if x != val_i])
+        train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
 
-        Xt_train, Xv_train, ohe_train, y_train = subset_data(Xt, Xv, region_ohe, y, [x in train_y for x in groups])
-        Xt_val, Xv_val, ohe_val, y_val = subset_data(Xt, Xv, region_ohe, y, groups == val_y)
-        Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_y)
+        Xt_train, Xv_train, ohe_train, y_train = subset_data(Xt, Xv, region_ohe, y, [x in train_i for x in groups])
+        Xt_val, Xv_val, ohe_val, y_val = subset_data(Xt, Xv, region_ohe, y, groups == val_i)
+        Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
 
         # ---- Reshaping data necessary
         Xt_train = reshape_data(Xt_train, n_channels)
@@ -78,22 +83,27 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
         Xt_test = reshape_data(Xt_test, n_channels)
 
         # ---- Normalizing the data per band
-        minMaxVal_file = '.'.join(str(out_model_file).split('.')[0:-1])
-        minMaxVal_file = minMaxVal_file + '_minMax.txt'
-        if not os.path.exists(minMaxVal_file):
-            min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y = computingMinMax(Xt_train, Xv_train, y)
-            #save_minMaxVal(minMaxVal_file, min_per_t, max_per_t, min_per_v, max_per_v)  # TODO!
-        else:
-            min_per_t, max_per_t, min_per_v, max_per_v = read_minMaxVal(minMaxVal_file)  # TODO!
+        #minMaxVal_file = '.'.join(str(out_model_file).split('.')[0:-1])
+        #minMaxVal_file = minMaxVal_file + '_minMax.txt'
+        #if not os.path.exists(minMaxVal_file):
+        min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y = computingMinMax(Xt_train, Xv_train, train_i)
+        #else:
+        #    min_per_t, max_per_t, min_per_v, max_per_v = read_minMaxVal(minMaxVal_file)  # TODO!
+        #transformer_Xt = RobustScaler(quantile_range=(0.02, 0.98)).fit(Xt_train)
+
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         Xv_train = normalizingData(Xv_train, min_per_v, max_per_v)
-        ys_train = normalizingData(y_train, min_per_y, max_per_y)
+
         Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
         Xv_val = normalizingData(Xv_val, min_per_v, max_per_v)
-        ys_val = normalizingData(y_val, min_per_y, max_per_y)
+
         Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
         Xv_test = normalizingData(Xv_test, min_per_v, max_per_v)
-        ys_test = normalizingData(y_test, min_per_y, max_per_y)
+
+        transformer_y = MinMaxScaler().fit(y_train)
+        ys_train = transformer_y.transform(y_train)
+        ys_val = transformer_y.transform(y_val)
+        ys_test = transformer_y.transform(y_test)
 
         # ---- concatenate OHE and Xv
         Xv_train = np.concatenate([Xv_train, ohe_train], axis=1)
@@ -101,7 +111,7 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
         Xv_test = np.concatenate([Xv_test, ohe_test], axis=1)
 
         # ---- variables
-        n_epochs = 20
+        n_epochs = 100
         batch_size = 40
 
         if model_type == 'RNN_MIMO':
@@ -110,6 +120,12 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
                 trainValTestModel_MIMO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, Xt_test, Xv_test,
                                        ys_test, out_model_file, n_epochs=n_epochs, batch_size=batch_size)
             pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_test, 'v_input': Xv_test})
+
+            pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_test, 'v_input': Xv_test})
+            plot_predictions(ys_test,  np.concatenate([pred1, pred2, pred3], axis=1), title='Test')
+
+            pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_train, 'v_input': Xv_train})
+            plot_predictions(ys_train,  np.concatenate([pred1, pred2, pred3], axis=1), title='Train')
 
         elif model_type == 'RNN_SIMO':
             model = func(Xt_train, nb_rnn=1, nbunits_rnn=18, nbunits_fc=32, verbose=False)
@@ -126,21 +142,54 @@ def main(fn_indata, sits_path_val, sits_path_test, dir_out, feature, noarchi, no
             pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_test, 'v_input': Xv_test})
 
 
-        elif model_type == 'CNN_SIMO':
+        elif  model_type == 'CNN_SIMO':
             model = func(Xt_train, nb_conv=4, nbunits_conv=5, nbunits_fc=32, verbose=False)
             tmodel, mse1, mse2, mse3, history, train_time, test_time = \
                 trainValTestModel_SIMO(model, Xt_train, ys_train, Xt_val, ys_val, Xt_test,
                                        ys_test, out_model_file, n_epochs=n_epochs, batch_size=batch_size)
 
             pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_test})
-        out_i = np.concatenate([ys_test, pred1, pred2, pred3], axis=1)
+            plot_predictions(ys_test,  np.concatenate([pred1, pred2, pred3], axis=1), title='Test')
+
+        elif  model_type == 'CNNw_SIMO':
+            model = func(Xt_train, nbunits_conv=15, verbose=False)
+            tmodel, mse1, mse2, mse3, history, train_time, test_time = \
+                trainValTestModel_SIMO(model, Xt_train, ys_train, Xt_val, ys_val, Xt_test,
+                                       ys_test, out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+
+            pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_test})
+            #plot_predictions(ys_test, np.concatenate([pred1, pred2, pred3], axis=1), title='Test')
+
+        elif model_type == 'CNNw_MIMO':
+            model = func(Xt_train,  Xv_train, nbunits_conv=10, verbose=False)
+            tmodel, mse1, mse2, mse3, history, train_time, test_time = \
+                trainValTestModel_MIMO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, Xt_test, Xv_test,
+                                       ys_test, out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+
+            pred1, pred2, pred3 = tmodel.predict(x={'ts_input': Xt_test, 'v_input': Xv_test})
+
+        elif model_type == 'CNNw_SISO':
+            model = func(Xt_train,  nbunits_conv=10, verbose=False)
+            tmodel, mse1, history, train_time, test_time = \
+                trainValTestModel_SISO(model, Xt_train, ys_train[:, [0]], Xt_val, ys_val[:, [0]], Xt_test,
+                                       ys_test[:, [0]], out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+            pred1 = tmodel.predict(x={'ts_input': Xt_test})
+
+        preds = transformer_y.inverse_transform(np.concatenate([pred1, pred2, pred3], axis=1))
+
+        out_i = np.concatenate([y_test, preds], axis=1)
         if df_out is None:
             df_out = out_i
         else:
             df_out = np.concatenate([df_out, out_i], axis=0)
 
+    plt.plot(df_out[:,0], df_out[:,3], '.')
 
+    preds = np.concatenate([pred1, pred2, pred3], axis=1)
+    out_i = np.concatenate([ys_test, preds], axis=1)
+    #df_out = out_i
     plot_predictions(df_out[:,0:3], df_out[:,3:6], title='Test')
+    mean_squared_error(df_out[:, 0:3],  df_out[:, 3:6], squared=False, multioutput='raw_values')
 
     # saveLossAcc(model_hist, traintest_loss_file)
 

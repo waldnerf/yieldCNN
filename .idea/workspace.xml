@@ -2,9 +2,20 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="7f5f2d1c-a151-49ff-9638-698192142172" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/optimise_mo_archictectures.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/optimise_so_archictectures.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deeplearning/architecture_complexity.py" beforeDir="false" afterPath="$PROJECT_DIR$/deeplearning/architecture_complexity.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deeplearning/architecture_features.py" beforeDir="false" afterPath="$PROJECT_DIR$/deeplearning/architecture_features.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/outputfiles/plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/outputfiles/plot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/outputfiles/save.py" beforeDir="false" afterPath="$PROJECT_DIR$/outputfiles/save.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess_inputs.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess_inputs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_archi.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/run_archictectures.py" beforeDir="false" afterPath="$PROJECT_DIR$/run_archictectures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_main_archi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_rnn_archi_sar.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sits/readingsits.py" beforeDir="false" afterPath="$PROJECT_DIR$/sits/readingsits.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/constants.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -26,7 +37,8 @@
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../1DcropID" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="run.code.analysis.last.selected.profile" value="aDefault" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -93,7 +105,14 @@
       <option name="project" value="LOCAL" />
       <updated>1620810001959</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="feat: CNN and RNN">
+      <created>1620826486446</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1620826486446</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -101,7 +120,9 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="COLUMN_ORDER" />
+            </State>
           </value>
         </entry>
       </map>

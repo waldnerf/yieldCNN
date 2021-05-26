@@ -6,6 +6,27 @@
 
 import numpy as np
 import pandas as pd
+from pathlib import Path
+import shutil
+
+#-----------------------------------------------------------------------
+def save_best_model(path, pattern):
+	"""
+	"""
+	best_dir = path / 'best_model'
+	best_dir.mkdir(parents=True, exist_ok=True)
+	fns_select = path.glob(f'*{pattern}*')
+	for i in fns_select:
+		print(i)
+		shutil.copy(i, str(best_dir))
+
+#-----------------------------------------------------------------------
+def rm_tree(pth):
+    for child in pth.iterdir():
+        if child.is_file():
+            child.unlink()
+        else:
+            rm_tree(child)
 
 #-----------------------------------------------------------------------		
 def saveLossAcc(model_hist, filename):
@@ -52,68 +73,6 @@ def readMatrix(filename):
 	mat = pd.read_csv(filename)	
 	return mat.values
 
-#-----------------------------------------------------------------------
-def save_confusion_matrix(C, class_name, conf_file):
-	""" 
-		Create a confusion matrix with IndexName, Precision, Recall, F-Score, OA and Kappa
-		Charlotte's style
-		INPUT:
-			- C: confusion_matrix compute by sklearn.metrics.confusion_matrix
-			- class_name: corresponding name class
-		OUTPUT:
-			- conf_mat: Charlotte's confusion matrix
-	"""
-	
-	nclass, _ = C.shape
-	
-	#-- Compute the different statistics
-	recall = np.zeros(nclass)
-	precision = np.zeros(nclass)
-	fscore = np.zeros(nclass)
-	diag_sum = 0
-	hdiag_sum = 0
-	for add in range(nclass):
-		hdiag_sum = hdiag_sum + np.sum(C[add,:])*np.sum(C[:,add])
-		if C[add,add] == 0:
-			recall[add] =0
-			precision[add] =0
-			fscore[add] =0
-		else:
-			recall[add] = C[add,add]/np.sum(C[add,:])
-			recall[add] = "%.6f" % recall[add]
-			precision[add] = C[add,add]/np.sum(C[:,add])
-			precision[add] = "%.6f" % precision[add]
-			fscore[add] = (2*precision[add]*recall[add])/(precision[add]+recall[add])
-			fscore[add] = "%.6f" % fscore[add]
-	nbSamples = np.sum(C)
-	OA = np.trace(C)/nbSamples
-	ph = hdiag_sum/(nbSamples*nbSamples)
-	kappa = (OA-ph)/(1.0-ph)
-			
-	f = open(conf_file, 'w')
-	line = ' '
-	for name in class_name:
-		line = line + ',' + name
-	line = line + ',Recall\n'
-	f.write(line)
-	for j in range(nclass):
-		line = class_name[j]
-		for i in range(nclass):
-			line = line + ',' + str(C[j,i])
-		line = line + ',' + str(recall[j]) + '\n'
-		f.write(line)
-	line = "Precision"
-	for add in range(nclass):
-		line = line + ',' + str(precision[add])
-	line = line + ',' + str(OA)
-	line = line + ',' + str(kappa) + '\n'
-	f.write(line)
-	line = "F-Score"
-	for add in range(nclass):
-		line = line + ',' + str(fscore[add])
-	line = line + '\n'
-	f.write(line)
-	f.close()
 
 #-----------------------------------------------------------------------
 def write_predictions_csv(test_file, p_test):
