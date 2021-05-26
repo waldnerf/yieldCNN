@@ -323,11 +323,25 @@ def objective_CNNw_MISO(trial):
 
 # -----------------------------------------------------------------------
 def main(fn_indata, dir_out, model_type='CNNw_MISO'):
+    # -- Define global variables
+    global out_model
+    global crop_n
+    global Xt
+    global n_channels
+    global groups
+    global Xv
+    global region_ohe
+    global y
+    global n_epochs
+    global batch_size
+    global region_id
+
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
 
     # ---- Get filenames
     print("Input file: ", os.path.basename(str(fn_indata)))
+
 
     # ---- output files
     dir_out.mkdir(parents=True, exist_ok=True)
@@ -362,19 +376,6 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
             indices = list(range(0, Xt_full.shape[1] // n_channels))
             msel = [True if x < (month * 3) else False for x in indices] * n_channels
             Xt = Xt_full[:, msel]
-
-            # -- Define global variables
-            global out_model
-            global crop_n
-            global Xt
-            global n_channels
-            global groups
-            global Xv
-            global region_ohe
-            global y
-            global n_epochs
-            global batch_size
-            global region_id
 
             study = optuna.create_study(direction='minimize')
             if model_type == 'CNNw_SISO':
