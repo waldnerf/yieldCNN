@@ -175,19 +175,6 @@ def objective_CNNw_SISO(trial):
 
 
 def objective_CNNw_MISO(trial):
-    # 1. Define global variables
-    global out_model
-    global crop_n
-    global Xt
-    global n_channels
-    global groups
-    global Xv
-    global region_ohe
-    global y
-    global n_epochs
-    global batch_size
-    global region_id
-    
     # 2. Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
@@ -375,6 +362,19 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
             indices = list(range(0, Xt_full.shape[1] // n_channels))
             msel = [True if x < (month * 3) else False for x in indices] * n_channels
             Xt = Xt_full[:, msel]
+
+            # -- Define global variables
+            global out_model
+            global crop_n
+            global Xt
+            global n_channels
+            global groups
+            global Xv
+            global region_ohe
+            global y
+            global n_epochs
+            global batch_size
+            global region_id
 
             study = optuna.create_study(direction='minimize')
             if model_type == 'CNNw_SISO':
