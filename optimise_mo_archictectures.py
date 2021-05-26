@@ -14,7 +14,7 @@ from outputfiles.plot import *
 from outputfiles.save import *
 from outputfiles.evaluation import *
 from sits.readingsits import *
-import src.constants as cst
+import mysrc.constants as cst
 
 
 def objective_CNNw_SIMO(trial):

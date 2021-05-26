@@ -7,7 +7,7 @@ import csv
 from toolz import interleave
 from sklearn.model_selection import StratifiedShuffleSplit
 
-import src.constants as cst
+import mysrc.constants as cst
 
 import pandas as pd
 from pathlib import Path

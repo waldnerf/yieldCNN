@@ -29,10 +29,8 @@ class Project(object):
         self.meta_dir = self.data_dir / 'meta'
         self.params_dir = self.data_dir / 'params'
         self.figs_dir = self.root_dir / 'figures'
-
     def create(self, raw_data=[]):
         self.data_dir.mkdir(parents=True, exist_ok=True)
-
         for _fp in [self.meta_dir, self.params_dir, self.figs_dir]:
             _fp.mkdir(parents=True, exist_ok=True)
 
