@@ -20,6 +20,19 @@ import mysrc.constants as cst
 
 
 def objective_CNNw_SISO(trial):
+    # 1. Define global variables
+    global out_model
+    global crop_n
+    global Xt
+    global n_channels
+    global groups
+    global Xv
+    global region_ohe
+    global y
+    global n_epochs
+    global batch_size
+    global region_id
+
     # 2. Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
@@ -162,6 +175,19 @@ def objective_CNNw_SISO(trial):
 
 
 def objective_CNNw_MISO(trial):
+    # 1. Define global variables
+    global out_model
+    global crop_n
+    global Xt
+    global n_channels
+    global groups
+    global Xv
+    global region_ohe
+    global y
+    global n_epochs
+    global batch_size
+    global region_id
+    
     # 2. Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
@@ -175,7 +201,6 @@ def objective_CNNw_MISO(trial):
     activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     # Define output filenames
-
     fn_fig_val = dir_out / f'{(out_model).split(".h5")[0]}' \
                  f'_res_{trial.number}_val_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{v_fc_}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.png'
