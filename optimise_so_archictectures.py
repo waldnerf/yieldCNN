@@ -20,40 +20,27 @@ import mysrc.constants as cst
 
 
 def objective_CNNw_SISO(trial):
-    # 1. Define global variables
-    global out_model
-    global crop_n
-    global Xt
-    global n_channels
-    global groups
-    global Xv
-    global region_ohe
-    global y
-    global n_epochs
-    global batch_size
-    global region_id
-
     # 2. Suggest values of the hyperparameters using a trial object.
-    nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45)
+    nbunits_conv_ = trial.suggest_int('nbunits_conv', 5, 45)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
     strides_ = trial.suggest_int('strides', 2, 5)
-    pool_size_ = trial.suggest_int('pool_size', 1, 5)
+    pool_size_ = trial.suggest_int('pool_size', 2, 5)
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.05)
-    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2])
+    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 3])
     funits_fc_ = trial.suggest_categorical('funits_fc', [1, 2, 3])
     activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     # Define output filenames
-    fn_fig_val = dir_out / f'{(out_model).split(".h5")[0]}' \
+    fn_fig_val = dir_tgt / f'{(out_model).split(".h5")[0]}' \
                  f'_res_{trial.number}_val_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.png'
-    fn_fig_test = dir_out / f"{(out_model).split('.h5')[0]}" \
+    fn_fig_test = dir_tgt / f"{(out_model).split('.h5')[0]}" \
                  f'_res_{trial.number}_test_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.png'
-    fn_cv_test = dir_out / f'{(out_model).split(".h5")[0]}' \
+    fn_cv_test = dir_tgt / f'{(out_model).split(".h5")[0]}' \
                  f'_res_{trial.number}_test_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.csv'
-    out_model_file = dir_out / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
+    out_model_file = dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
     model = Archi_CNNw_SISO([Xt.shape[1] // n_channels, n_channels],
                             nbunits_conv=nbunits_conv_,
@@ -188,16 +175,16 @@ def objective_CNNw_MISO(trial):
     activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     # Define output filenames
-    fn_fig_val = dir_out / f'{(out_model).split(".h5")[0]}' \
+    fn_fig_val = dir_tgt / f'{(out_model).split(".h5")[0]}' \
                  f'_res_{trial.number}_val_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{v_fc_}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.png'
-    fn_fig_test = dir_out / f"{(out_model).split('.h5')[0]}" \
+    fn_fig_test = dir_tgt / f"{(out_model).split('.h5')[0]}" \
                  f'_res_{trial.number}_test_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{v_fc_}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.png'
-    fn_cv_test = dir_out / f'{(out_model).split(".h5")[0]}' \
+    fn_cv_test = dir_tgt / f'{(out_model).split(".h5")[0]}' \
                  f'_res_{trial.number}_test_{nbunits_conv_}_{kernel_size_}_{strides_}_{pool_size_}_'\
                  f'{round(dropout_rate_*100)}_{v_fc_}_{funits_fc_}_{nb_fc_}_{funits_fc_}_{activation_}.csv'
-    out_model_file = dir_out / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
+    out_model_file = dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
     model = Archi_CNNw_MISO([Xt.shape[1] // n_channels, n_channels],
                             [1 + region_ohe.shape[1]], #area prop + ohe
@@ -335,6 +322,7 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
     global n_epochs
     global batch_size
     global region_id
+    global dir_tgt
 
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
@@ -370,8 +358,8 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
         dir_crop.mkdir(parents=True, exist_ok=True)
         # loop by month
         for month in range(2, (Xt_full.shape[1] // n_channels // 3)+1):
-            dir_out = dir_crop / f'month_{month}'
-            dir_out.mkdir(parents=True, exist_ok=True)
+            dir_tgt = dir_crop / f'month_{month}'
+            dir_tgt.mkdir(parents=True, exist_ok=True)
 
             indices = list(range(0, Xt_full.shape[1] // n_channels))
             msel = [True if x < (month * 3) else False for x in indices] * n_channels
@@ -394,14 +382,14 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
             for key, value in trial.params.items():
                 print("{}: {}".format(key, value))
 
-            joblib.dump(study, os.path.join(dir_out, f'study_{crop_n}_{model_type}.dump'))
+            joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
             # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
             # dumped_study.trials_dataframe()
-            df = study.trials_dataframe().to_csv(os.path.join(dir_out, f'study_{crop_n}_{model_type}.csv'))
+            df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
             # fig = optuna.visualization.plot_slice(study)
             print('------------------------------------------------')
 
-            save_best_model(dir_out, f'res_{trial.number}')
+            save_best_model(dir_tgt, f'res_{trial.number}')
 
 
 
