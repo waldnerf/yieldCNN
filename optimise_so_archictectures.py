@@ -360,7 +360,7 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
             dir_tgt = dir_crop / f'month_{month}'
             dir_tgt.mkdir(parents=True, exist_ok=True)
 
-            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & overwrite is False:
+            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
                 pass
             else:
                 rm_tree(dir_out)
