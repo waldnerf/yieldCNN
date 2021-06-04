@@ -309,7 +309,7 @@ def objective_CNNw_MISO(trial):
     return av_rmse_val
 
 # -----------------------------------------------------------------------
-def main(fn_indata, dir_out, model_type='CNNw_MISO'):
+def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
     # -- Define global variables
     global out_model
     global crop_n
@@ -335,7 +335,6 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
     dir_out.mkdir(parents=True, exist_ok=True)
     dir_res = dir_out / f'Archi+{str(model_type)}'
     dir_res.mkdir(parents=True, exist_ok=True)
-    rm_tree(dir_out)
     print("noarchi: ", model_type)
     out_model = f'archi-{model_type}.h5'
 
@@ -361,35 +360,39 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO'):
             dir_tgt = dir_crop / f'month_{month}'
             dir_tgt.mkdir(parents=True, exist_ok=True)
 
-            indices = list(range(0, Xt_full.shape[1] // n_channels))
-            msel = [True if x < (month * 3) else False for x in indices] * n_channels
-            Xt = Xt_full[:, msel]
+            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & overwrite is False:
+                pass
+            else:
+                rm_tree(dir_out)
+                indices = list(range(0, Xt_full.shape[1] // n_channels))
+                msel = [True if x < (month * 3) else False for x in indices] * n_channels
+                Xt = Xt_full[:, msel]
 
-            study = optuna.create_study(direction='minimize')
-            if model_type == 'CNNw_SISO':
-                study.optimize(objective_CNNw_SISO, n_trials=n_trials)
-            if model_type == 'CNNw_MISO':
-                study.optimize(objective_CNNw_MISO, n_trials=n_trials)
+                study = optuna.create_study(direction='minimize')
+                if model_type == 'CNNw_SISO':
+                    study.optimize(objective_CNNw_SISO, n_trials=n_trials)
+                if model_type == 'CNNw_MISO':
+                    study.optimize(objective_CNNw_MISO, n_trials=n_trials)
 
-            trial = study.best_trial
-            print('------------------------------------------------')
-            print('--------------- Optimisation results -----------')
-            print('------------------------------------------------')
-            print("Number of finished trials: ", len(study.trials))
-            print(f"\n           Best trial ({trial.number})        \n")
-            print("MSE: ", trial.value)
-            print("Params: ")
-            for key, value in trial.params.items():
-                print("{}: {}".format(key, value))
+                trial = study.best_trial
+                print('------------------------------------------------')
+                print('--------------- Optimisation results -----------')
+                print('------------------------------------------------')
+                print("Number of finished trials: ", len(study.trials))
+                print(f"\n           Best trial ({trial.number})        \n")
+                print("MSE: ", trial.value)
+                print("Params: ")
+                for key, value in trial.params.items():
+                    print("{}: {}".format(key, value))
 
-            joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
-            # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
-            # dumped_study.trials_dataframe()
-            df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
-            # fig = optuna.visualization.plot_slice(study)
-            print('------------------------------------------------')
+                joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
+                # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
+                # dumped_study.trials_dataframe()
+                df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
+                # fig = optuna.visualization.plot_slice(study)
+                print('------------------------------------------------')
 
-            save_best_model(dir_tgt, f'res_{trial.number}')
+                save_best_model(dir_tgt, f'res_{trial.number}')
 
 
 
@@ -399,8 +402,8 @@ if __name__ == "__main__":
     try:
         fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_dataset.csv')
         dir_out = cst.my_project.params_dir
-        main(fn_indata, dir_out, model_type='CNNw_SISO')
-        main(fn_indata, dir_out, model_type='CNNw_MISO')
+        main(fn_indata, dir_out, model_type='CNNw_SISO', overwrite=False)
+        main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False)
         print("0")
     except RuntimeError:
         print >> sys.stderr
