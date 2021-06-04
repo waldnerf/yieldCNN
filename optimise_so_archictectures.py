@@ -363,7 +363,7 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
             if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
                 pass
             else:
-                rm_tree(dir_out)
+                rm_tree(dir_tgt)
                 indices = list(range(0, Xt_full.shape[1] // n_channels))
                 msel = [True if x < (month * 3) else False for x in indices] * n_channels
                 Xt = Xt_full[:, msel]
@@ -402,7 +402,7 @@ if __name__ == "__main__":
     try:
         fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_dataset.csv')
         dir_out = cst.my_project.params_dir
-        main(fn_indata, dir_out, model_type='CNNw_SISO', overwrite=False)
+        #main(fn_indata, dir_out, model_type='CNNw_SISO', overwrite=False)
         main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False)
         print("0")
     except RuntimeError:
