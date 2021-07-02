@@ -105,7 +105,7 @@ def Archi_CNNw_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size
     for add in range(nb_fc - 1):
         X = Dense(nbunits_conv * funits_fc, activation=activation)(X)
         X = Dropout(dropout_rate)(X)
-    out1 = Dense(1, activation='linear', name='out1')(X)
+    out1 = Dense(1, activation='relu', name='out1')(X)
 
     # Create model.
     model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_CNNw_MISO')
@@ -142,7 +142,7 @@ def Archi_CNNw_SIMO_st(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=
     for add in range(nb_fc - 1):
         X = Dense(nbunits_conv * funits_fc, activation=activation)(X)
         X = Dropout(dropout_rate)(X)
-    out1 = Dense(3, activation='linear', name='out1')(X)
+    out1 = Dense(3, activation='relu', name='out1')(X)
 
     # Create model.
     model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_CNNw_SIMO_st')

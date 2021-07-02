@@ -54,6 +54,7 @@ def objective_CNNw_SISO(trial):
                             verbose=False)
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
+    cv_i = 0
     for test_i in np.unique(groups):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
@@ -128,7 +129,14 @@ def objective_CNNw_SISO(trial):
         mses_test.append(mse_test)
         r2s_test.append(r2_test)
 
+        trial.report(np.mean(r2s_val), cv_i)  # report mse
+        if trial.should_prune():  # let optuna decide whether to prune
+            raise optuna.exceptions.TrialPruned()
+        cv_i += 1
+
+
     av_rmse_val = np.mean(mses_val)
+    av_r2_val = np.mean(r2s_val)
     av_rmse_test = np.mean(mses_test)
 
     plt.plot([0, 5], [0, 5], '-', color='black')
@@ -158,18 +166,18 @@ def objective_CNNw_SISO(trial):
     df_out = np.concatenate([df_details, df_test], axis=1)
     pd.DataFrame(df_out, columns=['ASAP1_ID', 'Year', 'Observed', 'Predicted']).to_csv(fn_cv_test, index=False)
 
-    return av_rmse_val
+    return av_r2_val
 
 
 def objective_CNNw_MISO(trial):
     # 2. Suggest values of the hyperparameters using a trial object.
-    nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45)
+    nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
     strides_ = trial.suggest_int('strides', 2, 5)
     pool_size_ = trial.suggest_int('pool_size', 1, 5)
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.05)
     v_fc_ = trial.suggest_categorical('v_fc', [0, 1])
-    nbunits_v_ = trial.suggest_int('nbunits_v', 10, 25)
+    nbunits_v_ = trial.suggest_int('nbunits_v', 10, 25, step=5)
     nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2])
     funits_fc_ = trial.suggest_categorical('funits_fc', [1, 2, 3])
     activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
@@ -201,7 +209,8 @@ def objective_CNNw_MISO(trial):
                             verbose=False)
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
-    for test_i in np.unique(groups):
+    cv_i = 0
+    for test_i in np.unique(groups):  #TODO: shuffle?
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
 
@@ -276,7 +285,13 @@ def objective_CNNw_MISO(trial):
         mses_test.append(mse_test)
         r2s_test.append(r2_test)
 
+        trial.report(np.mean(r2s_val), cv_i)  # report mse
+        if trial.should_prune():  # let optuna decide whether to prune
+            raise optuna.exceptions.TrialPruned()
+        cv_i += 1
+
     av_rmse_val = np.mean(mses_val)
+    av_r2_val = np.mean(r2s_val)
     av_rmse_test = np.mean(mses_test)
 
     plt.plot([0, 5], [0, 5], '-', color='black')
@@ -304,9 +319,9 @@ def objective_CNNw_MISO(trial):
     plt.close()
     # Save CV results
     df_out = np.concatenate([df_details, df_test], axis=1)
-    pd.DataFrame(df_out,columns=['ASAP1_ID', 'Year', 'Observed', 'Predicted'] ).to_csv(fn_cv_test, index=False)
+    pd.DataFrame(df_out, columns=['ASAP1_ID', 'Year', 'Observed', 'Predicted']).to_csv(fn_cv_test, index=False)
 
-    return av_rmse_val
+    return av_r2_val
 
 # -----------------------------------------------------------------------
 def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
@@ -347,8 +362,8 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
     # ---- Getting train/val/test data
 
     # ---- variables
-    n_epochs = 80
-    batch_size = 800
+    n_epochs = 60
+    batch_size = 500  #TODO: check if resample
     n_trials = 100
 
     # loop through all crops
@@ -368,7 +383,9 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
                 msel = [True if x < (month * 3) else False for x in indices] * n_channels
                 Xt = Xt_full[:, msel]
 
-                study = optuna.create_study(direction='minimize')
+                study = optuna.create_study(direction='maximize',
+                                            pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
+                                            )
                 if model_type == 'CNNw_SISO':
                     study.optimize(objective_CNNw_SISO, n_trials=n_trials)
                 if model_type == 'CNNw_MISO':

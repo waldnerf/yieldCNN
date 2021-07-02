@@ -10,14 +10,13 @@ import pandas as pd
 import math
 import random
 import itertools
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 import csv
 
 # -----------------------------------------------------------------------
 # ---------------------- SATELLITE MODULE
 # -----------------------------------------------------------------------
-final_class_label = ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10', 'c11', 'c12']
 
 
 # -----------------------------------------------------------------------

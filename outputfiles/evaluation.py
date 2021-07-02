@@ -1,83 +1,107 @@
-#!/usr/bin/python
-
-""" 
-	Computing ML metrics for evaluating trained models
-"""
-
-import sys, os
+import sklearn.metrics as metrics
 import numpy as np
-import math
 
-#-----------------------------------------------------------------------		
-def computingConfMatrix(referenced, p_test, n_classes):
-	""" 
-		Computing a n_classes by n_classes confusion matrix
-		INPUT:
-			- referenced: reference data labels
-			- p_test: predicted 'probabilities' from the model for the test instances
-			- n_classes: number of classes (numbered from 0 to 1)
-		OUTPUT:
-			- C: computed confusion matrix
-	"""
-	predicted = p_test.argmax(axis=1)
-	C = np.zeros((n_classes, n_classes))
-	for act, pred in zip(referenced, predicted):
-		C[act][pred] += 1
-	return C
-	
-#-----------------------------------------------------------------------		
-def computingConfMatrixperPolygon(y_test, p_test, polygon_ids_test, n_classes):
-	""" 
-		Computing a n_classes by n_classes confusion matrix
-		INPUT:
-			- y_test_one_one: one hot encoding of the test labels
-			- p_test: predicted 'probabilities' from the model for the test instances
-			- n_classes: number of classes (numbered from 0 to 1)
-		OUTPUT:
-			- C_poly_perpoly: computed confusion matrix at polygon level with polygon count
-			- C_poly_perpix: computed confusion matrix at polygon level with pixel count
-			- OA_poly_poly: OA at polygon level with polygon count
-			- OA_poly_pix: OA at polygon level with pixel count
-	"""	
-	nbTestInstances = y_test.shape[0]					
-	unique_pol_test = np.unique(polygon_ids_test)
-	n_polygons_test = len(unique_pol_test)
-	C_poly_perpoly = np.zeros((n_classes, n_classes))
-	C_poly_perpix = np.zeros((n_classes, n_classes))
-	
-	probas_per_polygon = {x:np.zeros(n_classes,dtype=float) for x in unique_pol_test}
-	n_pixels_per_polygon = {x:0 for x in unique_pol_test}
-	for i in range(nbTestInstances):
-		poly = polygon_ids_test[i]
-		pred = p_test[i]					
-		probas_per_polygon[poly] = probas_per_polygon.get(poly) + pred
-		n_pixels_per_polygon[poly] = n_pixels_per_polygon[poly] + 1
+def mean_error_nan(y_true, y_pred):
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    nas = np.logical_or(np.isnan(y_true), np.isnan(y_pred))          #2021-4-30 nan treatement added
+    return np.mean(np.array(y_pred[~nas]) - np.array(y_true[~nas]))
 
-	for poly, probas in probas_per_polygon.items():
-		probas_per_polygon[poly] = probas / n_pixels_per_polygon.get(poly)
-		pred_class_id = np.argmax(probas_per_polygon[poly])
-		id_line_with_right_poly = polygon_ids_test.tolist().index(poly)
-		correct_class_index = y_test[id_line_with_right_poly]					
-		C_poly_perpoly[correct_class_index,pred_class_id] = C_poly_perpoly[correct_class_index,pred_class_id] + 1
-		C_poly_perpix[correct_class_index,pred_class_id] = C_poly_perpix[correct_class_index,pred_class_id] + n_pixels_per_polygon[poly]
-	
-	OA_poly_poly = round(float(np.trace(C_poly_perpoly))/n_polygons_test,4)
-	OA_poly_pix = round(float(np.trace(C_poly_perpix))/nbTestInstances,4)
-	return C_poly_perpoly, C_poly_perpix, OA_poly_poly, OA_poly_pix
+def r2_nan(x, y):
+    # scikit r2_score is not resistant to nan
+    x = np.array(x)
+    y = np.array(y)
+    nas = np.logical_or(np.isnan(x), np.isnan(y))
+    return metrics.r2_score(x[~nas], y[~nas])
 
-	
-#-----------------------------------------------------------------------		
-def computingRMSE(y_test_one_hot,p_test):
-	""""
-		Computing RMSE from the prediction of the softmax layer
-		INPUT:
-			- y_test_one_one: one hot encoding of the test labels
-			- p_test: predicted 'probabilities' from the model for the test instances
-		OUTPUT:
-			- rmse: Root Mean Square Error
-	"""
-	nbTestInstances = y_test_one_hot.shape[0]
-	diff_proba = y_test_one_hot - p_test
-	return math.sqrt(np.sum(diff_proba*diff_proba)/nbTestInstances)
+def mean_absolute_error_nan(x, y):
+    # scikit not resistant to nan
+    x = np.array(x)
+    y = np.array(y)
+    nas = np.logical_or(np.isnan(x), np.isnan(y))
+    return metrics.mean_absolute_error(x[~nas], y[~nas])
 
-#EOF
+def rmse_nan(x, y):
+    # scikit not resistant to nan
+    x = np.array(x)
+    y = np.array(y)
+    nas = np.logical_or(np.isnan(x), np.isnan(y))
+    return metrics.mean_squared_error(x[~nas], y[~nas], squared=False)
+
+# def mean_rel_abs_error(w):
+#     """Mean Absolute Percentage Error"""
+#     # mean (|y(year,au)-y_pred(year,au)| / mean(y(year,au) * 100)
+#     w = w.join(w.groupby('AU_code')['yLoo_true'].mean(), on='AU_code', rsuffix='_mean')
+#
+#     w['mean_rel_abs_error'] = ((w['yLoo_true' ] -w['yLoo_pred']).abs() /w['yLoo_true_mean' ] *100)
+#     return ((w['yLoo_true' ] -w['yLoo_pred']).abs() /w['yLoo_true_mean' ] *100).mean()
+
+def allStats_country(mRes):
+    # At national level, not as average of held out year (cv folder)
+    # mean true y used for normalization
+    y_true = np.array(mRes['yLoo_true'])
+    nas = np.isnan(y_true)
+    avg_y_true = np.mean(y_true[~nas])
+    res = {
+        'Pred_R2': r2_nan(mRes['yLoo_true'], mRes['yLoo_pred']),
+        #'Pred_R2': mRes.groupby('Year').apply(lambda x: r2_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean(),
+        'Pred_MAE': mean_absolute_error_nan(mRes['yLoo_true'], mRes['yLoo_pred']),
+        # 'Pred_MAE': mRes.groupby('Year').apply(lambda x: mean_absolute_error_nan(x['yLoo_pred'], x['yLoo_true'])).reset_index(drop=True).mean(),
+        'Pred_ME': mean_error_nan(mRes['yLoo_true'], mRes['yLoo_pred']),
+        #'Pred_ME': mRes.groupby('Year').apply(lambda x: mean_error_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean(),
+        'Pred_RMSE': rmse_nan(mRes['yLoo_true'], mRes['yLoo_pred']),
+        #'Pred_RMSE': mRes.groupby('Year').apply(lambda x: rmse_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean(),
+        'rel_Pred_MAE': mean_absolute_error_nan(mRes['yLoo_true'], mRes['yLoo_pred']) / avg_y_true * 100.0,
+        #'rel_Pred_MAE': mRes.groupby('Year').apply(lambda x: mean_absolute_error_nan(x['yLoo_pred'], x['yLoo_true'])).reset_index(drop=True).mean() / avg_y_true * 100.0,
+        'rel_Pred_RMSE': rmse_nan(mRes['yLoo_true'], mRes['yLoo_pred']) / avg_y_true * 100.0
+        #'rel_Pred_RMSE': mRes.groupby('Year').apply(lambda x: rmse_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean() / avg_y_true * 100.0
+    }
+    #compute RMSE on the poorest years (First Quantile lower 25 pecentile)
+    mresFQ = mRes[mRes['yLoo_true'] <= mRes['yLoo_true'].quantile(0.25)]
+    #res['Pred_RMSE_FQ'] = np.sqrt(metrics.mean_squared_error(mresFQ['yLoo_true'], mresFQ['yLoo_pred']))
+    res['Pred_RMSE_FQ'] = rmse_nan(mresFQ['yLoo_true'], mresFQ['yLoo_pred'])
+    res['Pred_rRMSE_FQ'] = res['Pred_RMSE_FQ'] / avg_y_true * 100.0
+    # if (Compute_Pred_MrAE):
+    #     # using the mean of the target value per AU, compute the % rmse
+    #     res['Pred_MrAE'] = mean_rel_abs_error(mRes)
+    return res
+
+def allStats(mRes):
+    # mean true y used for normalization
+    y_true = np.array(mRes['yLoo_true'])
+    nas = np.isnan(y_true)
+    avg_y_true = np.mean(y_true[~nas])
+    res = {
+        #'Pred_R2': metrics.r2_score(mRes['yLoo_true'], mRes['yLoo_pred']),
+        #'Pred_MAE': metrics.mean_absolute_error(mRes['yLoo_true'], mRes['yLoo_pred']),
+        #'Pred_ME': mean_error_nan(mRes['yLoo_true'], mRes['yLoo_pred']),
+        #'Pred_RMSE': np.sqrt(metrics.mean_squared_error(mRes['yLoo_true'], mRes['yLoo_pred'])),
+
+        'Pred_R2': mRes.groupby('Year').apply(lambda x: r2_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean(),
+        'Pred_MAE': mRes.groupby('Year').apply(lambda x: mean_absolute_error_nan(x['yLoo_pred'], x['yLoo_true'])).reset_index(drop=True).mean(),
+        'rel_Pred_MAE': mRes.groupby('Year').apply(lambda x: mean_absolute_error_nan(x['yLoo_pred'], x['yLoo_true'])).reset_index(drop=True).mean() / avg_y_true * 100.0,
+        'Pred_ME': mRes.groupby('Year').apply(lambda x: mean_error_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean(),
+        'Pred_RMSE':  mRes.groupby('Year').apply(lambda x: rmse_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean(),
+        'rel_Pred_RMSE': mRes.groupby('Year').apply(lambda x: rmse_nan(x['yLoo_true'], x['yLoo_pred'])).reset_index(drop=True).mean() / avg_y_true * 100.0
+    }
+    # #compute RMSE on the poorest years (First Quantile lower 25 pecentile)
+    # mresFQ = mRes[mRes['yLoo_true'] <= mRes['yLoo_true'].quantile(0.25)]
+    # #res['Pred_RMSE_FQ'] = np.sqrt(metrics.mean_squared_error(mresFQ['yLoo_true'], mresFQ['yLoo_pred']))
+    # res['Pred_RMSE_FQ'] = rmse_nan(mresFQ['yLoo_true'], mresFQ['yLoo_pred'])
+    # res['Pred_rRMSE_FQ'] = res['Pred_RMSE_FQ'] / avg_y_true * 100.0
+    # # if (Compute_Pred_MrAE):
+    # #     # using the mean of the target value per AU, compute the % rmse
+    # #     res['Pred_MrAE'] = mean_rel_abs_error(mRes)
+    return res
+
+def meanAUR2(mRes):
+    # Compute the mean of the tempral R2 computed by AU
+    def r2_au(g):
+        x = g['yLoo_true']
+        y = g['yLoo_pred']
+        #return metrics.r2_score(g['yLoo_true'], g['yLoo_pred'])
+        return r2_nan(x, y)
+
+    res = mRes.groupby('AU_code').apply(r2_au)
+    return res.mean()
+
