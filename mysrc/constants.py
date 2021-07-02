@@ -17,6 +17,14 @@ else:
         root_dir = Path(r"/home/waldnfr/data/leanyf")
         git_dir = Path(r'/home/waldnfr/git')
 
+if 'google.colab' in str(get_ipython()):
+    print('Running on CoLab')
+    root_dir = '/content/gdrive/MyDrive/leanyf'
+    git_dir = '/content/yieldCNN/'
+else:
+    print('Not running on CoLab')
+
+
 for i in [str(root_dir), str(git_dir)]:
     sys.path.insert(0, i)
 
