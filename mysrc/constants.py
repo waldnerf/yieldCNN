@@ -19,8 +19,8 @@ else:
 
 if 'google.colab' in str(get_ipython()):
     print('Running on CoLab')
-    root_dir = '/content/gdrive/MyDrive/leanyf'
-    git_dir = '/content/yieldCNN/'
+    root_dir = Path('/content/gdrive/MyDrive/leanyf')
+    git_dir = Path('/content/yieldCNN/')
 else:
     print('Not running on CoLab')
 
