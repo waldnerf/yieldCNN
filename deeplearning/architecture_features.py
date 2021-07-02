@@ -162,7 +162,7 @@ def trainTestModel(model, Xt_train, y_train, X_test, Y_test_onehot, out_model_fi
         return -estimated_distribution.log_prob(targets)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
     model.compile(optimizer=opt,
                   loss={'out1': 'mse'},  # , 'out2': 'mse', 'out3': 'mse'},
                   # loss_weights={'out1': 1., 'out2': 1., 'out3': 1.},
@@ -283,7 +283,7 @@ def cv_Model_SIMO_mt(model, Xt_train, ys_train, Xt_val, ys_val, out_model_file, 
     decay = train_params.setdefault("decay", 0.01)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
@@ -319,7 +319,7 @@ def cv_Model_MIMO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, o
     decay = train_params.setdefault("decay", 0.01)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
@@ -356,7 +356,7 @@ def cv_Model_MISO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, o
     decay = train_params.setdefault("decay", 0.01)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
@@ -393,7 +393,7 @@ def trainValTestModel_SISO(model, Xt_train, ys_train, Xt_val, ys_val,
     decay = train_params.setdefault("decay", 0.01)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
@@ -441,7 +441,7 @@ def trainValTestModel_SIMO(model, Xt_train, ys_train, Xt_val, ys_val,
     decay = train_params.setdefault("decay", 0.0)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
@@ -489,7 +489,7 @@ def trainValTestModel_MIMO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, 
     decay = train_params.setdefault("decay", 0.0)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
@@ -537,7 +537,7 @@ def trainValTestModel_singletask(model, X_train, Y_train_onehot, X_val, Y_val_on
     decay = train_params.setdefault("decay", 0.0)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
     model.compile(optimizer=opt,
                   loss={'out1': 'mse', 'out2': 'mse'},
                   loss_weights={'out1': 1., 'out2': 1.})
