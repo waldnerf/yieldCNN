@@ -16,9 +16,14 @@ def save_best_model(path, pattern):
 	best_dir = path / 'best_model'
 	best_dir.mkdir(parents=True, exist_ok=True)
 	fns_select = path.glob(f'*{pattern}*')
+	fn_csv = ''
 	for i in fns_select:
 		print(i)
 		shutil.copy(i, str(best_dir))
+		if 'csv' in i:
+			fn_csv = i
+	return fn_csv
+
 
 #-----------------------------------------------------------------------
 def rm_tree(pth):

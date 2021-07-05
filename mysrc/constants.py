@@ -9,18 +9,22 @@ if sys.platform == 'win32':
     if getpass.getuser() == 'franc':
         root_dir = Path('C:/Users/franc/OneDrive/Documents/projects/crop_classification')
         git_dir = Path(r'C:/Users/franc/OneDrive/Documents/git/temporalCNN')
+        neptune_project = 'waldnerf/yieldCNN'
     elif getpass.getuser() == 'waldnfr':
         root_dir = Path('C:/Users/waldnfr/Documents/projects/leanyf')
         git_dir = Path(r'C:/Users/waldnfr/Documents/git')
+        neptune_project = 'waldnerf/yieldCNN'
 else:
     if getpass.getuser() == 'waldnfr':
         root_dir = Path(r"/home/waldnfr/data/leanyf")
         git_dir = Path(r'/home/waldnfr/git')
+        neptune_project = 'waldnerf/yieldCNN'
 
 if 'google.colab' in str(get_ipython()):
     print('Running on CoLab')
     root_dir = Path('/content/gdrive/MyDrive/leanyf')
     git_dir = Path('/content/yieldCNN/')
+    neptune_project = 'waldnerf/yieldCNN'
 else:
     print('Not running on CoLab')
 

@@ -8,7 +8,7 @@ def weighed_average(grp):
     return grp._get_numeric_data().multiply(grp['Production'], axis=0).sum() / grp['Production'].sum()
 
 
-def main(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn_stats90):
+def model_evaluation(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn_stats90):
     """
     CNN2DFileFullPath: full path of the 2DCNN output, similar to mRRS but not identical
     asapID2AU_codeFileFullPath: full path to the cvs linking asap id to AU code
@@ -94,11 +94,11 @@ if __name__ == "__main__":
         fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
         model_name = 'Archi+2DCNNw_MISO'
         out = []
-        for crop_id in range(0,3):
+        for crop_id in range(0, 3):
             for forecast_time in range(2, 9):
                 dir_fn = dir_out / f'{model_name}/crop_{crop_id}/month_{forecast_time}/best_model'
                 fn = [x for x in dir_fn.glob('*.csv')][0]
-                res_i = main(fn, crop_id, forecast_time, model_name, fn_asapID2AU, fn_stats90)
+                res_i = model_evaluation(fn, crop_id, forecast_time, model_name, fn_asapID2AU, fn_stats90)
                 out.append(res_i)
 
         df_out = pd.concat(out)
