@@ -17,9 +17,8 @@ def save_best_model(path, pattern):
 	best_dir.mkdir(parents=True, exist_ok=True)
 	fns_select = path.glob(f'*{pattern}*')
 	for i in fns_select:
+		print(i)
 		shutil.copy(i, str(best_dir))
-
-
 
 #-----------------------------------------------------------------------
 def rm_tree(pth):
