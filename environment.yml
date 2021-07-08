@@ -1,4 +1,4 @@
-name: tempcnn
+name: yieldcnn
 channels:
   - defaults
   - conda-forge
