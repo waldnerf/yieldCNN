@@ -3,7 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="7f5f2d1c-a151-49ff-9638-698192142172" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/outputfiles/save.py" beforeDir="false" afterPath="$PROJECT_DIR$/outputfiles/save.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -209,7 +209,21 @@
       <option name="project" value="LOCAL" />
       <updated>1625484912905</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="run on gitlab">
+      <created>1625485405113</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1625485405113</updated>
+    </task>
+    <task id="LOCAL-00019" summary="add environment">
+      <created>1625736262307</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1625736262307</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -240,6 +254,7 @@
     <MESSAGE value="fix: run SISO + MISO" />
     <MESSAGE value="add: 2D CNN" />
     <MESSAGE value="run on gitlab" />
-    <option name="LAST_COMMIT_MESSAGE" value="run on gitlab" />
+    <MESSAGE value="add environment" />
+    <option name="LAST_COMMIT_MESSAGE" value="add environment" />
   </component>
 </project>

@@ -13,3 +13,5 @@ dependencies:
   - pip
   - pip:
       - tensorflow-gpu==2.3.0
+      - optuna
+      - wandb
