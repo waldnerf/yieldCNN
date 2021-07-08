@@ -1,0 +1,15 @@
+name: tempcnn
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7.6
+  - anaconda
+  - toolz
+  - scikit-learn
+  - cudatoolkit
+  - cudnn
+  - keras
+  - pip
+  - pip:
+      - tensorflow-gpu==2.3.0

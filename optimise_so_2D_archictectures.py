@@ -9,18 +9,25 @@ from sklearn.preprocessing import MinMaxScaler
 import optuna
 import joblib
 import random
-
+import wandb
 random.seed(4)
+
+#import tensorflow as tf
+#tf.get_logger().setLevel('ERROR')
+
+#import tensorflow.python.util.deprecation as deprecation
+#deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 from deeplearning.architecture_complexity_2d import *
 from outputfiles.plot import *
 from outputfiles.save import *
+from model_evaluation import *
 from outputfiles.evaluation import *
 from sits.readingsits2D import *
 import mysrc.constants as cst
 
 
-def objective_CNNw_SISO(trial):
+def objective_2DCNN_SISO(trial):
     # 2. Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
@@ -43,17 +50,16 @@ def objective_CNNw_SISO(trial):
                            f'{round(dropout_rate_ * 100)}_{nb_fc_}_{funits_fc_}_{activation_}.csv'
     out_model_file = dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
-    model = Archi_2DCNNw_SISO(Xt,
-                              region_ohe,
-                              nbunits_conv=nbunits_conv_,
-                              kernel_size=kernel_size_,
-                              strides=strides_,
-                              pool_size=pool_size_,
-                              dropout_rate=dropout_rate_,
-                              nb_fc=nb_fc_,
-                              funits_fc=funits_fc_,
-                              activation=activation_,
-                              verbose=False)
+    model = Archi_2DCNN_SISO(Xt,
+                             nbunits_conv=nbunits_conv_,
+                             kernel_size=kernel_size_,
+                             strides=strides_,
+                             pool_size=pool_size_,
+                             dropout_rate=dropout_rate_,
+                             nb_fc=nb_fc_,
+                             funits_fc=funits_fc_,
+                             activation=activation_,
+                             verbose=False)
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0
@@ -84,7 +90,7 @@ def objective_CNNw_SISO(trial):
         ys_test = transformer_y.transform(y_test[:, [crop_n]])
 
         # We compile our model with a sampled learning rate.
-        model, y_val_preds = cv_Model_MISO(model, Xt_train, ys_train, Xt_val, ys_val,
+        model, y_val_preds = cv_Model_SISO(model, Xt_train, ys_train, Xt_val, ys_val,
                                            out_model_file, n_epochs=n_epochs, batch_size=batch_size)
         y_val_preds = transformer_y.inverse_transform(y_val_preds)
         out_val = np.concatenate([y_val[:, [crop_n]], y_val_preds], axis=1)
@@ -152,7 +158,7 @@ def objective_CNNw_SISO(trial):
     return av_r2_val
 
 
-def objective_CNNw_MISO(trial):
+def objective_2DCNN_MISO(trial):
     # 2. Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
     kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
@@ -177,19 +183,19 @@ def objective_CNNw_MISO(trial):
                            f'{round(dropout_rate_ * 100)}_{v_fc_}_{nbunits_v_}_{nb_fc_}_{funits_fc_}_{activation_}.csv'
     out_model_file = dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
-    model = Archi_2DCNNw_MISO(Xt,
-                              region_ohe,
-                              nbunits_conv=nbunits_conv_,
-                              kernel_size=kernel_size_,
-                              strides=strides_,
-                              pool_size=pool_size_,
-                              dropout_rate=dropout_rate_,
-                              v_fc=v_fc_,
-                              nbunits_v=nbunits_v_,
-                              nb_fc=nb_fc_,
-                              funits_fc=funits_fc_,
-                              activation=activation_,
-                              verbose=False)
+    model = Archi_2DCNN_MISO(Xt,
+                             region_ohe,
+                             nbunits_conv=nbunits_conv_,
+                             kernel_size=kernel_size_,
+                             strides=strides_,
+                             pool_size=pool_size_,
+                             dropout_rate=dropout_rate_,
+                             v_fc=v_fc_,
+                             nbunits_v=nbunits_v_,
+                             nb_fc=nb_fc_,
+                             funits_fc=funits_fc_,
+                             activation=activation_,
+                             verbose=False)
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0
@@ -225,7 +231,7 @@ def objective_CNNw_MISO(trial):
         # ---- concatenate OHE and Xv / Here we discard the proportion of each crop and only keep OHE
         Xv_train = ohe_train  # np.concatenate([Xv_train[:, [crop_n]], ohe_train], axis=1)
         Xv_val = ohe_val  # np.concatenate([Xv_val[:, [crop_n]], ohe_val], axis=1)
-        Xv_test = ohe_test  #np.concatenate([Xv_test[:, [crop_n]], ohe_test], axis=1)
+        Xv_test = ohe_test  # np.concatenate([Xv_test[:, [crop_n]], ohe_test], axis=1)
 
         # We compile our model with a sampled learning rate.
         model, y_val_preds = cv_Model_MISO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val,
@@ -297,7 +303,7 @@ def objective_CNNw_MISO(trial):
 
 
 # -----------------------------------------------------------------------
-def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
+def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO', overwrite=False, wandb_log=True):
     # -- Define global variables
     global out_model
     global crop_n
@@ -335,7 +341,7 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
 
     # ---- variables
     n_epochs = 70
-    batch_size = 800
+    batch_size = 500
     n_trials = 100
 
     # loop through all crops
@@ -357,10 +363,10 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
                 study = optuna.create_study(direction='maximize',
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
                                             )
-                if model_type == '2DCNNw_SISO':
-                    study.optimize(objective_CNNw_SISO, n_trials=n_trials)
-                if model_type == '2DCNNw_MISO':
-                    study.optimize(objective_CNNw_MISO, n_trials=n_trials)
+                if model_type == '2DCNN_SISO':
+                    study.optimize(objective_2DCNN_SISO, n_trials=n_trials)
+                if model_type == '2DCNN_MISO':
+                    study.optimize(objective_2DCNN_MISO, n_trials=n_trials)
 
                 trial = study.best_trial
                 print('------------------------------------------------')
@@ -382,13 +388,53 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
 
                 save_best_model(dir_tgt, f'res_{trial.number}')
 
+                # Flexible integration for any Python script
+                if wandb_log:
+                    # 1. Start a W&B run
+                    wandb.init(project='leanyf', entity='waldnerf', group=model_type, config=trial.params)
+
+                    # 2. Save model inputs and hyperparameters
+                    config = wandb.config
+                    config.model_type = model_type
+                    config.crop = crop_n
+                    config.month = month
+                    config.n_epochs = n_epochs
+                    config.batch_size = batch_size
+                    config.n_trials = n_trials
+                    wandb.run.name = f'{model_type}-{crop_n}-{month}'
+                    wandb.run.save()
+
+                    # Evaluate best model on test set
+                    fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
+                    res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
+                    # 3. Log metrics over time to visualize performance
+                    wandb.log({"crop_n": crop_n,
+                               "month": month,
+                               "R2_p": res_i.R2_p.to_numpy()[0],
+                               "MAE_p": res_i.MAE_p.to_numpy()[0],
+                               "rMAE_p": res_i.rMAE_p.to_numpy()[0],
+                               "ME_p": res_i.ME_p.to_numpy()[0],
+                               "RMSE_p": res_i.RMSE_p.to_numpy()[0],
+                               "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
+                               "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
+                               "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
+                               "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
+                               "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
+                               "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
+                               "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
+                               "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
+                               })
+
+
 
 # -----------------------------------------------------------------------
 if __name__ == "__main__":
     try:
         fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset.pickle'
         dir_out = cst.my_project.params_dir
-        main(fn_indata, dir_out, model_type='2DCNNw_MISO', overwrite=False)
+        fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
+        fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
+        main(fn_indata, dir_out, fn_asapID2AU, fn_stats90, model_type='2DCNN_SISO', overwrite=False, wandb_log=True)
         print("0")
     except RuntimeError:
         print >> sys.stderr

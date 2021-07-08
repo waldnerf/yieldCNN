@@ -209,7 +209,7 @@ def cv_Model_SISO(model, Xt_train, ys_train, Xt_val, ys_val, out_model_file, **t
     decay = train_params.setdefault("decay", 0.01)
 
     # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
 
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
