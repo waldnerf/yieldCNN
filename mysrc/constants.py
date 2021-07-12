@@ -14,19 +14,24 @@ if sys.platform == 'win32':
         root_dir = Path('C:/Users/waldnfr/Documents/projects/leanyf')
         git_dir = Path(r'C:/Users/waldnfr/Documents/git')
         neptune_project = 'waldnerf/yieldCNN'
+    elif getpass.getuser() == 'meronmi':
+        root_dir = Path(r'D:/PY_data/leanyf')
+        git_dir = Path(r'c:/MM_not_sure_what_for')
+        neptune_project = 'MM_not_sure_what_for'
+       
 else:
     if getpass.getuser() == 'waldnfr':
         root_dir = Path(r"/home/waldnfr/data/leanyf")
         git_dir = Path(r'/home/waldnfr/git')
         neptune_project = 'waldnerf/yieldCNN'
 
-if 'google.colab' in str(get_ipython()):
-    print('Running on CoLab')
-    root_dir = Path('/content/gdrive/MyDrive/leanyf')
-    git_dir = Path('/content/yieldCNN/')
-    neptune_project = 'waldnerf/yieldCNN'
-else:
-    print('Not running on CoLab')
+# if 'google.colab' in str(get_ipython()):
+#     print('Running on CoLab')
+#     root_dir = Path('/content/gdrive/MyDrive/leanyf')
+#     git_dir = Path('/content/yieldCNN/')
+#     neptune_project = 'waldnerf/yieldCNN'
+# else:
+#     print('Not running on CoLab')
 
 
 for i in [str(root_dir), str(git_dir)]:

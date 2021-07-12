@@ -88,7 +88,7 @@ def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
     l2_rate = 1.e-6
 
     # Define the input placeholder.
-    Xt_input = Input(input_shape_t, name='ts_input')
+    Xt_input = Input(input_shape_t, name='ts_input')    ##MM: Input() is used to instantiate a Keras tensor.
 
     # -- nb_conv CONV layers
     Xt = Xt_input
