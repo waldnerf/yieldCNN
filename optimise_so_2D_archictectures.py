@@ -117,7 +117,7 @@ def objective_2DCNN_SISO(trial):
         mses_test.append(mse_test)
         r2s_test.append(r2_test)
 
-        trial.report(np.mean(r2s_val), cv_i)  # report mse
+        trial.report(np.mean(r2s_val), cv_i)  # report R2and not mse anymore
         if trial.should_prune():  # let optuna decide whether to prune
             raise optuna.exceptions.TrialPruned()
         cv_i += 1
