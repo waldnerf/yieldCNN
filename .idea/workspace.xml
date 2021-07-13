@@ -2,10 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="7f5f2d1c-a151-49ff-9638-698192142172" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/yieldCNN.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/yieldCNN.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mysrc/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/mysrc/constants.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimise_so_2D_archictectures.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimise_so_2D_archictectures.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -29,7 +27,15 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="C:/dev/Anaconda3-2019.10/envs/yieldML" />
     <property name="run.code.analysis.last.selected.profile" value="aDefault" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="PyConsoleConfigurable.Python Console" />
+  </component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings module-name="yieldCNN" is-module-sdk="true">
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myModuleName" value="yieldCNN" />
+      </console-settings>
+    </option>
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -233,7 +239,21 @@
       <option name="project" value="LOCAL" />
       <updated>1625484912905</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="MM added personal path and some comments for himself">
+      <created>1626099106200</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1626099106200</updated>
+    </task>
+    <task id="LOCAL-00019" summary="MM added comments">
+      <created>1626171886511</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1626171886511</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -264,35 +284,27 @@
     <MESSAGE value="fix: run SISO + MISO" />
     <MESSAGE value="add: 2D CNN" />
     <MESSAGE value="run on gitlab" />
-    <option name="LAST_COMMIT_MESSAGE" value="run on gitlab" />
+    <MESSAGE value="MM added personal path and some comments for himself" />
+    <MESSAGE value="MM added comments" />
+    <option name="LAST_COMMIT_MESSAGE" value="MM added comments" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
-          <line>432</line>
+          <line>424</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/outputfiles/save.py</url>
-          <line>24</line>
-          <option name="timeStamp" value="17" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
-          <line>360</line>
-          <option name="timeStamp" value="18" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
-          <line>370</line>
+          <line>362</line>
           <option name="timeStamp" value="19" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/deeplearning/architecture_features.py</url>
-          <line>6</line>
-          <option name="timeStamp" value="20" />
+          <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
+          <line>95</line>
+          <option name="timeStamp" value="26" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
