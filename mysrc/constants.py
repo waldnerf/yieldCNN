@@ -20,19 +20,17 @@ if sys.platform == 'win32':
         neptune_project = 'MM_not_sure_what_for'
        
 else:
-    if getpass.getuser() == 'waldnfr':
-        root_dir = Path(r"/home/waldnfr/data/leanyf")
-        git_dir = Path(r'/home/waldnfr/git')
+    if 'google.colab' in str(get_ipython()):
+        print('Running on CoLab')
+        root_dir = Path('/content/gdrive/MyDrive/leanyf')
+        git_dir = Path('/content/yieldCNN/')
         neptune_project = 'waldnerf/yieldCNN'
-
-# if 'google.colab' in str(get_ipython()):
-#     print('Running on CoLab')
-#     root_dir = Path('/content/gdrive/MyDrive/leanyf')
-#     git_dir = Path('/content/yieldCNN/')
-#     neptune_project = 'waldnerf/yieldCNN'
-# else:
-#     print('Not running on CoLab')
-
+    else:
+        print('Not running on CoLab')
+        if getpass.getuser() == 'waldnfr':
+            root_dir = Path(r"/home/waldnfr/data/leanyf")
+            git_dir = Path(r'/home/waldnfr/git')
+            neptune_project = 'waldnerf/yieldCNN'
 
 for i in [str(root_dir), str(git_dir)]:
     sys.path.insert(0, i)

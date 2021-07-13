@@ -73,9 +73,7 @@ def objective_2DCNN_SISO(trial):
         Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y = computingMinMax(Xt_train,
-                                                                                           Xv_train,
-                                                                                           train_i)
+        min_per_t, max_per_t = computingMinMax(Xt_train)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         # Normalise validation set
@@ -209,18 +207,14 @@ def objective_2DCNN_MISO(trial):
         Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y = computingMinMax(Xt_train,
-                                                                                           Xv_train,
-                                                                                           train_i)
+        min_per_t, max_per_t = computingMinMax(Xt_train)
+        min_per_v, max_per_v = computingMinMax(Xv_train)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
-        Xv_train = normalizingData(Xv_train, min_per_v, max_per_v)
         # Normalise validation set
         Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
-        Xv_val = normalizingData(Xv_val, min_per_v, max_per_v)
         # Normalise test set
         Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
-        Xv_test = normalizingData(Xv_test, min_per_v, max_per_v)
 
         # Normalise ys
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
@@ -336,8 +330,6 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
-
-    # ---- Getting train/val/test data
 
     # ---- variables
     n_epochs = 70

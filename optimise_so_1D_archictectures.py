@@ -52,6 +52,7 @@ def objective_CNNw_SISO(trial):
                             funits_fc=funits_fc_,
                             activation=activation_,
                             verbose=False)
+    
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0
@@ -70,33 +71,18 @@ def objective_CNNw_SISO(trial):
         Xt_test = reshape_data(Xt_test, n_channels)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y = computingMinMax(Xt_train,
-                                                                                           Xv_train,
-                                                                                           train_i)
+        min_per_t, max_per_t= computingMinMax(Xt_train)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
-        Xv_train = normalizingData(Xv_train, min_per_v, max_per_v)
         # Normalise validation set
         Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
-        Xv_val = normalizingData(Xv_val, min_per_v, max_per_v)
         # Normalise test set
         Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
-        Xv_test = normalizingData(Xv_test, min_per_v, max_per_v)
-
-        # ---- concatenate OHE and Xv
-        Xv_train = np.concatenate([Xv_train, ohe_train], axis=1)
-        Xv_val = np.concatenate([Xv_val, ohe_val], axis=1)
-        Xv_test = np.concatenate([Xv_test, ohe_test], axis=1)
         # Normalise ys
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
         ys_train = transformer_y.transform(y_train[:, [crop_n]])
         ys_val = transformer_y.transform(y_val[:, [crop_n]])
         ys_test = transformer_y.transform(y_test[:, [crop_n]])
-
-        # ---- concatenate OHE and Xv
-        Xv_train = np.concatenate([Xv_train[:, [crop_n]], ohe_train], axis=1)
-        Xv_val = np.concatenate([Xv_val[:, [crop_n]], ohe_val], axis=1)
-        Xv_test = np.concatenate([Xv_test[:, [crop_n]], ohe_test], axis=1)
 
         # We compile our model with a sampled learning rate.
         model, y_val_preds = cv_Model_SISO(model, Xt_train, ys_train, Xt_val, ys_val,
@@ -210,7 +196,7 @@ def objective_CNNw_MISO(trial):
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0
-    for test_i in np.unique(groups):  #TODO: shuffle?
+    for test_i in np.unique(groups):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
 
@@ -225,15 +211,17 @@ def objective_CNNw_MISO(trial):
         Xt_test = reshape_data(Xt_test, n_channels)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y = computingMinMax(Xt_train,
-                                                                                           Xv_train,
-                                                                                           train_i)
+        min_per_t, max_per_t = computingMinMax(Xt_train)
+        min_per_v, max_per_v = computingMinMax(Xv_train)
+
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         Xv_train = normalizingData(Xv_train, min_per_v, max_per_v)
+
         # Normalise validation set
         Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
         Xv_val = normalizingData(Xv_val, min_per_v, max_per_v)
+
         # Normalise test set
         Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
         Xv_test = normalizingData(Xv_test, min_per_v, max_per_v)
@@ -242,6 +230,7 @@ def objective_CNNw_MISO(trial):
         Xv_train = np.concatenate([Xv_train, ohe_train], axis=1)
         Xv_val = np.concatenate([Xv_val, ohe_val], axis=1)
         Xv_test = np.concatenate([Xv_test, ohe_test], axis=1)
+
         # Normalise ys
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
         ys_train = transformer_y.transform(y_train[:, [crop_n]])
@@ -252,6 +241,11 @@ def objective_CNNw_MISO(trial):
         Xv_train = np.concatenate([Xv_train[:, [crop_n]], ohe_train], axis=1)
         Xv_val = np.concatenate([Xv_val[:, [crop_n]], ohe_val], axis=1)
         Xv_test = np.concatenate([Xv_test[:, [crop_n]], ohe_test], axis=1)
+        # ----  Here we discard the proportion of each crop and only keep OHE
+        Xv_train = ohe_train
+        Xv_val = ohe_val
+        Xv_test = ohe_test
+
 
 
         # We compile our model with a sampled learning rate.
@@ -363,7 +357,7 @@ def main(fn_indata, dir_out, model_type='CNNw_MISO', overwrite=False):
 
     # ---- variables
     n_epochs = 60
-    batch_size = 500  #TODO: check if resample
+    batch_size = 500
     n_trials = 100
 
     # loop through all crops
