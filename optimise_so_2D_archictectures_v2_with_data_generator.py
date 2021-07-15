@@ -328,6 +328,26 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
     # ---- Downloading
     Xt_full, Xv, region_id, groups, y = data_reader(fn_indata)
 
+    # ---- Data generator (MM)
+    # Data augmentation. First data are systematically shifted left and right of xshift ( xshift = [1,2]). We thus have the orginal histo plus
+    # the four shifted (5 in total). On this we add gaussian noise (norm, gauss add, mask, norm back). In total we have 10 samples from 1 histo
+    # After that we add gaussian to the corresponding yield as well. This will double the samples (20 from 1)
+
+    #1 - shift left (no matter if we leav the last deks unchanged, they will not be used)
+    Xt_full_l1 = np.roll(Xt_full, -1, axis=2)
+    Xt_full_l2 = np.roll(Xt_full, -2, axis=2)
+    #2 - shift right
+    Xt_full_r1 = np.roll(Xt_full, 1, axis=2)
+    Xt_full_r2 = np.roll(Xt_full, 2, axis=2)
+    # gauss noise
+    # first I have to normalize count (0 to n)  in quasi [0,1] to apply a gaussian noise with 0 mean and SD
+    min_per_t, max_per_t = computingMinMax(Xt_full)
+    # Normalise training set
+    Xt_full_norm = normalizingData(Xt_full, min_per_t, max_per_t)
+    Xt_full_n = Xt_full + np.random.normal(0, 0.1, Xt_full.shape)
+    Xt_full_n = normalizingData(Xt_full_n, min_per_t, max_per_t, back=True)
+
+
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
 
@@ -349,8 +369,11 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
                 pass
             else:
                 rm_tree(dir_tgt)
-                idx = (month + 1) * 3
-                Xt = Xt_full[:, :, 0:idx, :]
+                #idx = (month + 1) * 3 #MM: data starting 10-01 (Oct-01) in original Farnz's version
+                #Xt = Xt_full[:, :, 0:idx, :]
+                idx = (month + 1) * 3 + 3 #MM: now we data starts one month earlier (09-01) to allow time shift
+                Xt = Xt_full[:, :, 3:idx, :]
+
 
                 study = optuna.create_study(direction='maximize',
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
@@ -422,7 +445,7 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
 # -----------------------------------------------------------------------
 if __name__ == "__main__":
     try:
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset.pickle'
+        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_v2.pickle'
         dir_out = cst.my_project.params_dir
         fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
         fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
