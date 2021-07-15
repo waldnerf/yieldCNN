@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """ 
-	Defining keras architecture.
+	Defining tensorflow.keras architecture.
 	4.4. How big and deep model for our data?
 	4.4.1. Width influence or the bias-variance trade-off
 
@@ -11,11 +11,11 @@
 
 import sys, os
 from deeplearning.architecture_features import *
-import keras
-from keras import layers
-from keras.layers import Flatten
-from keras.layers import GRU, Bidirectional, LSTM, GlobalMaxPooling2D, GlobalAveragePooling2D, MaxPooling2D
-from keras import backend as K
+import tensorflow.keras
+from tensorflow.keras import layers
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import GRU, Bidirectional, LSTM, GlobalMaxPooling2D, GlobalAveragePooling2D, MaxPooling2D
+from tensorflow.keras import backend as K
 
 
 # -----------------------------------------------------------------------
@@ -88,7 +88,7 @@ def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
     l2_rate = 1.e-6
 
     # Define the input placeholder.
-    Xt_input = Input(input_shape_t, name='ts_input')    ##MM: Input() is used to instantiate a Keras tensor.
+    Xt_input = Input(input_shape_t, name='ts_input')    ##MM: Input() is used to instantiate a tensorflow.keras tensor.
 
     # -- nb_conv CONV layers
     Xt = Xt_input

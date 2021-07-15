@@ -194,6 +194,7 @@ def objective_2DCNN_MISO(trial):
                              funits_fc=funits_fc_,
                              activation=activation_,
                              verbose=False)
+
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0
@@ -326,7 +327,7 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
     out_model = f'archi-{model_type}.h5'
 
     # ---- Downloading
-    Xt_full, Xv, region_id, groups, y = data_reader(fn_indata)
+    Xt_full, Xv, region_id, groups, y = data_reader(fn_indata) #Xv = area
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
@@ -349,8 +350,8 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
                 pass
             else:
                 rm_tree(dir_tgt)
-                idx = (month + 1) * 3
-                Xt = Xt_full[:, :, 0:idx, :]
+                Xt = Xt_full[:, :, 0:(month * 3), :]
+                print(Xt.shape)
 
                 study = optuna.create_study(direction='maximize',
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
@@ -426,7 +427,9 @@ if __name__ == "__main__":
         dir_out = cst.my_project.params_dir
         fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
         fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
-        main(fn_indata, dir_out, fn_asapID2AU, fn_stats90, model_type='2DCNN_SISO', overwrite=False, wandb_log=True)
+        model_type = '2DCNN_SISO'
+        print(f'Model type: {model_type}')
+        main(fn_indata, dir_out, fn_asapID2AU, fn_stats90, model_type=model_type, overwrite=True, wandb_log=True)
         print("0")
     except RuntimeError:
         print >> sys.stderr
