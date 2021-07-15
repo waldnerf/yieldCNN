@@ -52,7 +52,7 @@ def objective_CNNw_SISO(trial):
                             funits_fc=funits_fc_,
                             activation=activation_,
                             verbose=False)
-    
+
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0

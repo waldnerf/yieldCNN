@@ -5,7 +5,8 @@
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/yieldCNN.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/yieldCNN.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mysrc/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/mysrc/constants.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimise_so_1D_archictectures.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimise_so_1D_archictectures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess_2d_inputs.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess_2d_inputs.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -233,7 +234,14 @@
       <option name="project" value="LOCAL" />
       <updated>1625484912905</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="run on gitlab">
+      <created>1626168877190</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1626168877190</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -270,24 +278,9 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
-          <line>432</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/outputfiles/save.py</url>
           <line>24</line>
           <option name="timeStamp" value="17" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
-          <line>360</line>
-          <option name="timeStamp" value="18" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimise_so_2D_archictectures.py</url>
-          <line>370</line>
-          <option name="timeStamp" value="19" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/deeplearning/architecture_features.py</url>
