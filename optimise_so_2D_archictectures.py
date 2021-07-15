@@ -64,8 +64,8 @@ def objective_2DCNN_SISO(trial):
     df_val, df_test, df_details = None, None, None
     cv_i = 0
     for test_i in np.unique(groups):
-        val_i = random.choice([x for x in np.unique(groups) if x != test_i])
-        train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
+        val_i = random.choice([x for x in np.unique(groups) if x != test_i]) #MM: excluding the test, only one for validation
+        train_i = [x for x in np.unique(groups) if x != val_i and x != test_i] #MM: all the rest is training
 
         Xt_train, Xv_train, ohe_train, y_train = subset_data(Xt, Xv, region_ohe, y,
                                                              [x in train_i for x in groups])
@@ -117,7 +117,7 @@ def objective_2DCNN_SISO(trial):
         mses_test.append(mse_test)
         r2s_test.append(r2_test)
 
-        trial.report(np.mean(r2s_val), cv_i)  # report mse
+        trial.report(np.mean(r2s_val), cv_i)  # report R2 and not mse anymore
         if trial.should_prune():  # let optuna decide whether to prune
             raise optuna.exceptions.TrialPruned()
         cv_i += 1

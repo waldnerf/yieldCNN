@@ -93,11 +93,11 @@ def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
     # -- nb_conv CONV layers
     Xt = Xt_input
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
-                             kernel_regularizer=l2(l2_rate))
-    Xt = MaxPooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt)
+                             kernel_regularizer=l2(l2_rate)) ##MM: returns nbunits_conv channels
+    Xt = MaxPooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt) ##MM: does not alter n of channels
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
-                             kernel_regularizer=l2(l2_rate))
-    Xt = GlobalMaxPooling2D(data_format='channels_last')(Xt)
+                             kernel_regularizer=l2(l2_rate)) #MM: keeps the same number of channels
+    Xt = GlobalMaxPooling2D(data_format='channels_last')(Xt)    #MM operate in space, so I get only one value per channel (nbunits_conv)
 
     # -- Flatten
     X = Flatten()(Xt)
