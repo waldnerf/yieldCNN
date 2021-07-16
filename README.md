@@ -11,6 +11,8 @@ cd yieldCNN
 conda env create -f environment.yml
 conda activate leanyf
 ```
+If a GPU is available, then type in:
+```pip install tensorflow-gpu==2.3.0```
 
 
 ## Contributors
