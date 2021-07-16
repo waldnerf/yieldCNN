@@ -1,4 +1,4 @@
-name: yieldcnn
+name: leanyf
 channels:
   - defaults
   - conda-forge
