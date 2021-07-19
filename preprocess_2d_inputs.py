@@ -73,7 +73,7 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
     arr_out = np.stack(arr_out, axis=2)
     return arr_out
 
-def main(fn_features, fn_stats, fn_out='', save_plot):
+def main(fn_features, fn_stats, fn_out='', save_plot=True):
     df_stats = pd.read_csv(fn_stats)
     df_stats = df_stats[['Year', 'Area', 'Yield', 'Production', 'AU_name',  'ASAP1_ID', 'Crop_name']].copy()
     df_stats['Crop_name'] = df_stats['Crop_name'].apply(lambda x: x.replace(' ', ''))
