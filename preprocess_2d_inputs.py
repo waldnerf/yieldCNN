@@ -14,7 +14,6 @@ pd.set_option('display.max_columns', 10)
 
 import mysrc.constants as cst
 from outputfiles.plot import *
-import quickle
 
 def get_season(date_, start_month, sep='-'):
     date_ = str(date_)
@@ -123,7 +122,7 @@ def main(fn_features, fn_stats, fn_out='', save_plot=True):
     if fn_out != '':
         # Saving the objects:
         with open(fn_out, 'wb') as f:
-            quickle.dump({'stats': df_statsw, 'X': hists}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump({'stats': df_statsw, 'X': hists}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
