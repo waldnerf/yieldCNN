@@ -14,7 +14,7 @@ pd.set_option('display.max_columns', 10)
 
 import mysrc.constants as cst
 from outputfiles.plot import *
-import pickle
+import quickle
 
 def get_season(date_, start_month, sep='-'):
     date_ = str(date_)
@@ -73,7 +73,7 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
     arr_out = np.stack(arr_out, axis=2)
     return arr_out
 
-def main(fn_features, fn_stats, fn_out=''):
+def main(fn_features, fn_stats, fn_out='', save_plot):
     df_stats = pd.read_csv(fn_stats)
     df_stats = df_stats[['Year', 'Area', 'Yield', 'Production', 'AU_name',  'ASAP1_ID', 'Crop_name']].copy()
     df_stats['Crop_name'] = df_stats['Crop_name'].apply(lambda x: x.replace(' ', ''))
@@ -88,9 +88,10 @@ def main(fn_features, fn_stats, fn_out=''):
 
     df_statsw.columns = df_statsw.columns.map(lambda x: '{}_{}'.format(*x))
     df_statsw.reset_index(inplace=True)
+    # Dropping 2001
     df_statsw = df_statsw.drop(df_statsw[df_statsw.Year == 2001].index)
 
-    # go to areal proportions
+    # go to area proportions
     my_cols = list(df_statsw.columns[df_statsw.columns.str.startswith('Area')])
     df_statsw.loc[:, my_cols] = df_statsw.loc[:, my_cols].apply(lambda x: x / x.sum(), axis=1)
 
@@ -99,26 +100,30 @@ def main(fn_features, fn_stats, fn_out=''):
     df_raw = df_raw.rename(columns={"reg0_id": "ASAP1_ID"})
 
     hists = []
+    # Histograms with 4 variables
     variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
     sfig_dir = cst.my_project.figs_dir / '2D_inputs'
     sfig_dir.mkdir(parents=True, exist_ok=True)
     for i, row in df_statsw.iterrows():
         # Start of season is at year -1 !!!
         hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36, ts_start='1001')
+        hists.append(hist)
+
+        # Plot data for each province-year
         super_title = f'{row["AU_name"]} ({row["Year"]}) - barley {round(row["Yield_Barley"], 2)} t/ha, ' \
                       f'soft wheat {round(row["Yield_Softwheat"], 2)} t/ha, ' \
                       f'durum wheat {round(row["Yield_Durumwheat"], 2)} t/ha'
         fig_name = sfig_dir / f'{row["AU_name"]}_{row["Year"]}_2Dinputs.png'
-        plot_2D_inputs_by_region(hist, variables, super_title, fig_name=fig_name)
-        plt.close()
-        hists.append(hist)
+        if save_plot:
+            plot_2D_inputs_by_region(hist, variables, super_title, fig_name=fig_name)
+            plt.close()
 
+    # Stacking and saving data
     hists = np.stack(hists, axis=0)
-
     if fn_out != '':
         # Saving the objects:
         with open(fn_out, 'wb') as f:
-            pickle.dump({'stats': df_statsw, 'X': hists}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            quickle.dump({'stats': df_statsw, 'X': hists}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
@@ -128,5 +133,6 @@ if __name__ == "__main__":
     fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
     fn_out = cst.my_project.data_dir/ f'{cst.target}_full_2d_dataset.pickle'
-    main(fn_features, fn_stats, fn_out)
+    save_plot = False
+    main(fn_features, fn_stats, fn_out, save_plot)
 

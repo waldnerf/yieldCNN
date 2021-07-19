@@ -1,17 +1,15 @@
-name: yieldcnn
+name: leanyf
 channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.7.6
+  - python=3.8.3
   - anaconda
   - toolz
   - scikit-learn
-  - cudatoolkit
+  - cudatoolkit==10.1
   - cudnn
-  - keras
   - pip
-  - pip:
-      - tensorflow-gpu==2.3.0
-      - optuna
-      - wandb
+  - tensorflow==2.3.0
+  - optuna==2.6.0
+  - wandb

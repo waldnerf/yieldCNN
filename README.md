@@ -3,7 +3,16 @@ Training temporal Convolution Neural Networks (CNNs) on satellite image time ser
 
 
 ## Prerequisites
-This code relies on Python 3.7.7 and Keras with Tensorflow backend.
+To set up the environment:
+
+```
+git clone https://github.com/waldnerf/yieldCNN.git
+cd yieldCNN
+conda env create -f environment.yml
+conda activate leanyf
+```
+If a GPU is available, then type in:
+```pip install tensorflow-gpu==2.3.0```
 
 
 ## Contributors

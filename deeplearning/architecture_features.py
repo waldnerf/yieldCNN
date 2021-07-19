@@ -1,23 +1,23 @@
 #!/usr/bin/python
 
 """ 
-	Defining keras architecture, and training the models
+	Defining tensorflow.keras architecture, and training the models
 """
 
 import sys, os
 import numpy as np
 import time
 
-import keras
-from keras import layers
-from keras import optimizers
-from keras.regularizers import l2
-from keras.layers import Input, Dense, Activation, BatchNormalization, Dropout, Flatten, Lambda, SpatialDropout1D, \
+import tensorflow.keras
+from tensorflow.keras import layers
+from tensorflow.keras import optimizers
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, Dropout, Flatten, Lambda, SpatialDropout1D, \
     Concatenate
-from keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, GlobalAveragePooling1D
-from keras.callbacks import Callback, ModelCheckpoint, History, EarlyStopping
-from keras.models import Model, load_model
-from keras import backend as K
+from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, GlobalAveragePooling1D
+from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, EarlyStopping
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras import backend as K
 
 
 
