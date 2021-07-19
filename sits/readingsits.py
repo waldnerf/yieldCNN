@@ -129,10 +129,11 @@ def save_minMaxVal(minmax_file, min_per, max_per):
 
 # -----------------------------------------------------------------------
 def normalizingData(X, min_per, max_per, back=False):
-    if back == True:
-        return (X - min_per) / (max_per - min_per)
-    else:
+    if back:
         return X * (max_per - min_per) + min_per
+    else:
+        return (X - min_per) / (max_per - min_per)
+
 
 
 # -----------------------------------------------------------------------

@@ -79,17 +79,19 @@ def subset_data(Xt, Xv, region_ohe, y, subset_bool):
 
 
 # -----------------------------------------------------------------------
-def computingMinMax(Xt,  per=2):
+def computingMinMax(Xt, per=2):
     min_per_t = np.percentile(Xt, per, axis=(0, 1, 2))
     max_per_t = np.percentile(Xt, 100 - per, axis=(0, 1, 2))
     return min_per_t, max_per_t
 
 # -----------------------------------------------------------------------
 def normalizingData(X, min_per, max_per, back=False):
-    if back == True:
-        return (X - min_per) / (max_per - min_per)
-    else:
+    if back:
         return X * (max_per - min_per) + min_per
+    else:
+        return (X - min_per) / (max_per - min_per)
+
+
 
 
 # -----------------------------------------------------------------------
