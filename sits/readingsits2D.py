@@ -10,7 +10,7 @@ import pandas as pd
 import math
 import random
 import itertools
-import quickle
+import pickle
 from tensorflow.keras.utils import to_categorical
 
 import csv
@@ -33,7 +33,7 @@ def data_reader(name_file):
     """
 
     with open(name_file, 'rb') as handle:
-        d = quickle.load(handle)
+        d = pickle.load(handle)
     df = d['stats']
 
     # time series
