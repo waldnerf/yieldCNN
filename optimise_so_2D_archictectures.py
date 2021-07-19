@@ -73,7 +73,9 @@ def objective_2DCNN_SISO(trial):
         Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t = computingMinMax(Xt_train)
+        # If images are already normalised per region, the following has no effect
+        # if not this is a minmax scaling based on the training set.
+        min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         # Normalise validation set
@@ -207,9 +209,10 @@ def objective_2DCNN_MISO(trial):
         Xt_val, Xv_val, ohe_val, y_val = subset_data(Xt, Xv, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
 
-        # ---- Normalizing the data per band
-        min_per_t, max_per_t = computingMinMax(Xt_train)
-        min_per_v, max_per_v = computingMinMax(Xv_train)
+        # If images are already normalised per region, the following has no effect
+        # if not this is a minmax scaling based on the training set.
+        min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
+        min_per_v, max_per_v = computingMinMax(Xv_train, per=0)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         # Normalise validation set
@@ -327,7 +330,7 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
     out_model = f'archi-{model_type}.h5'
 
     # ---- Downloading
-    Xt_full, Xv, region_id, groups, y = data_reader(fn_indata) #Xv = area
+    Xt_full, Xv, region_id, groups, y = data_reader(fn_indata, ) #Xv = area
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)

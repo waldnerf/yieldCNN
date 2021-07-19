@@ -105,7 +105,7 @@ def main(fn_features, fn_stats, fn_out='', save_plot=True):
     sfig_dir.mkdir(parents=True, exist_ok=True)
     for i, row in df_statsw.iterrows():
         # Start of season is at year -1 !!!
-        hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36, ts_start='1001')
+        hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36, ts_start='1001', normalise=True)
         hists.append(hist)
 
         # Plot data for each province-year
