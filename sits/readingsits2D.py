@@ -47,13 +47,13 @@ def data_reader(name_file):
 
     # Area
     my_cols = list(df.columns[df.columns.str.startswith('Area')])
-    Xv = df.loc[:, my_cols].astype(dtype='float32').values
+    area = df.loc[:, my_cols].astype(dtype='float32').values
 
     # Yields
     my_cols = list(df.columns[df.columns.str.startswith('Yield')])
     y = df.loc[:, my_cols].astype(dtype='float32').values
 
-    return Xt, Xv, region_ids, years, y
+    return Xt, area, region_ids, years, y
 
 
 # -----------------------------------------------------------------------

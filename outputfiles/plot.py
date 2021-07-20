@@ -3,6 +3,36 @@ import pandas as pd
 import numpy as np
 
 
+def plot_val_test_predictions(df_val_, df_test_, av_rmse_val_, r2s_val_, av_rmse_test_, r2s_test_,
+                              xlabels_, ylabels_, filename_val='', filename_test=''):
+    axes_min = np.floor(np.min(df_val_[:, 0]))
+    axes_max = np.ceil(np.max(df_val_[:, 0]))
+
+    plt.plot([axes_min, 5], [axes_min, 5], '-', color='black')
+    plt.plot(df_val_[:, 1], df_val_[:, 0], '.')
+    plt.title(f'RMSE: {np.round(av_rmse_val_, 4)} - R^2 = {np.round(np.mean(r2s_val_), 4)}')
+
+    plt.xlabel(xlabels_)
+    plt.ylabel(ylabels_)
+    plt.xlim(axes_min, axes_max)
+    plt.ylim(axes_min, axes_max)
+
+    if filename_val != '':
+        plt.savefig(filename_val)
+    plt.close()
+
+    plt.plot([axes_min, axes_max], [axes_min, axes_max], '--', color='black')
+    plt.plot(df_test_[:, 0], df_test_[:, 1], '.', color='orange')
+    plt.title(f'RMSE: {np.round(av_rmse_test_, 4)} - R^2 = {np.round(np.mean(r2s_test_), 4)}')
+
+    plt.xlabel(xlabels_)
+    plt.ylabel(ylabels_)
+    plt.xlim(axes_min, axes_max)
+    plt.ylim(axes_min, axes_max)
+
+    if filename_test != '':
+        plt.savefig(filename_test)
+    plt.close()
 
 def plot_predictions_mo(y, preds, title='', fn=''):
     plt.figure()
@@ -71,8 +101,6 @@ def plotHisto(fn, unit, var):
     plt.title(var +' - ' + unit)
     plt.show()
     print('debug')
-
-
 
 def plot_2D_inputs_by_region(hist, variables, title, fig_name=None, _figsize=(16.5, 5)):
 
