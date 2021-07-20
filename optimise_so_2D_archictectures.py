@@ -217,8 +217,8 @@ if __name__ == "__main__":
         ylabels = 'Observations (t/ha)'
     elif target_var == 'area':
         y = area
-        xlabels = 'Predictions (ha)'
-        ylabels = 'Observations (ha)'
+        xlabels = 'Predictions (%)'
+        ylabels = 'Observations (%)'
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
@@ -270,7 +270,8 @@ if __name__ == "__main__":
                 # Flexible integration for any Python script
                 if wandb_log:
                     # 1. Start a W&B run
-                    wandb.init(project='leanyf', entity='waldnerf', group=model_type, config=trial.params)
+                    wandb.init(project=cst.wandb_project, entity=cst.wandb_entity,
+                               group=model_type, config=trial.params)
 
                     # 2. Save model inputs and hyperparameters
                     config = wandb.config
