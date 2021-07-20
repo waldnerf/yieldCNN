@@ -74,8 +74,8 @@ def add_one_hot(regions):
     return new_X
 
 
-def subset_data(Xt, Xv, region_ohe, y, subset_bool):
-    return Xt[subset_bool, :, :, :], Xv[subset_bool, :], region_ohe[subset_bool, :], y[subset_bool]
+def subset_data(Xt, region_ohe, y, subset_bool):
+    return Xt[subset_bool, :, :, :], region_ohe[subset_bool, :], y[subset_bool]
 
 
 # -----------------------------------------------------------------------

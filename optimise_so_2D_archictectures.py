@@ -67,10 +67,9 @@ def objective_2DCNN_SISO(trial):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i]) #MM: excluding the test, only one for validation
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i] #MM: all the rest is training
 
-        Xt_train, Xv_train, ohe_train, y_train = subset_data(Xt, Xv, region_ohe, y,
-                                                             [x in train_i for x in groups])
-        Xt_val, Xv_val, ohe_val, y_val = subset_data(Xt, Xv, region_ohe, y, groups == val_i)
-        Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
+        Xt_train, ohe_train, y_train = subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
+        Xt_val, ohe_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
+        Xt_test, ohe_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
         # ---- Normalizing the data per band
         # If images are already normalised per region, the following has no effect
@@ -204,15 +203,13 @@ def objective_2DCNN_MISO(trial):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
 
-        Xt_train, Xv_train, ohe_train, y_train = subset_data(Xt, Xv, region_ohe, y,
-                                                             [x in train_i for x in groups])
-        Xt_val, Xv_val, ohe_val, y_val = subset_data(Xt, Xv, region_ohe, y, groups == val_i)
-        Xt_test, Xv_test, ohe_test, y_test = subset_data(Xt, Xv, region_ohe, y, groups == test_i)
+        Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
+        Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
+        Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
         # If images are already normalised per region, the following has no effect
         # if not this is a minmax scaling based on the training set.
         min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
-        min_per_v, max_per_v = computingMinMax(Xv_train, per=0)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         # Normalise validation set
@@ -225,11 +222,6 @@ def objective_2DCNN_MISO(trial):
         ys_train = transformer_y.transform(y_train[:, [crop_n]])
         ys_val = transformer_y.transform(y_val[:, [crop_n]])
         ys_test = transformer_y.transform(y_test[:, [crop_n]])
-
-        # ---- concatenate OHE and Xv / Here we discard the proportion of each crop and only keep OHE
-        Xv_train = ohe_train  # np.concatenate([Xv_train[:, [crop_n]], ohe_train], axis=1)
-        Xv_val = ohe_val  # np.concatenate([Xv_val[:, [crop_n]], ohe_val], axis=1)
-        Xv_test = ohe_test  # np.concatenate([Xv_test[:, [crop_n]], ohe_test], axis=1)
 
         # We compile our model with a sampled learning rate.
         model, y_val_preds = cv_Model_MISO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val,
@@ -301,7 +293,7 @@ def objective_2DCNN_MISO(trial):
 
 
 # -----------------------------------------------------------------------
-def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO', overwrite=False, wandb_log=True):
+def main(fn_indata, dir_out, target, fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO', overwrite=False, wandb_log=True):
     # -- Define global variables
     global out_model
     global crop_n
@@ -319,21 +311,28 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
 
+    # ---- Downloading
+    Xt_full, area, region_id, groups, yld = data_reader(fn_indata)
+
+    # ---- Format target variable
+    if target == 'yield':
+        y = yld
+    elif target == 'area':
+        y = area
+
+
+    # ---- Convert region to one hot
+    region_ohe = add_one_hot(region_id)
+
     # ---- Get filenames
     print("Input file: ", os.path.basename(str(fn_indata)))
 
     # ---- output files
     dir_out.mkdir(parents=True, exist_ok=True)
-    dir_res = dir_out / f'Archi+{str(model_type)}'
+    dir_res = dir_out / f'Archi_{str(model_type)}_{target}'
     dir_res.mkdir(parents=True, exist_ok=True)
     print("noarchi: ", model_type)
-    out_model = f'archi-{model_type}.h5'
-
-    # ---- Downloading
-    Xt_full, Xv, region_id, groups, y = data_reader(fn_indata, ) #Xv = area
-
-    # ---- Convert region to one hot
-    region_ohe = add_one_hot(region_id)
+    out_model = f'archi-{model_type}-{target}.h5'
 
     # ---- variables
     n_epochs = 70
@@ -357,7 +356,7 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
                 print(Xt.shape)
 
                 study = optuna.create_study(direction='maximize',
-                                            pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
+                                            pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
                 if model_type == '2DCNN_SISO':
                     study.optimize(objective_2DCNN_SISO, n_trials=n_trials)
@@ -430,9 +429,10 @@ if __name__ == "__main__":
         dir_out = cst.my_project.params_dir
         fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
         fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
-        model_type = '2DCNN_SISO'
+        model_type = '2DCNN_MISO'
+        target_var = 'area'
         print(f'Model type: {model_type}')
-        main(fn_indata, dir_out, fn_asapID2AU, fn_stats90, model_type=model_type, overwrite=True, wandb_log=True)
+        main(fn_indata, dir_out, target_var,  fn_asapID2AU, fn_stats90, model_type=model_type, overwrite=True, wandb_log=True)
         print("0")
     except RuntimeError:
         print >> sys.stderr
