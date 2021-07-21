@@ -180,7 +180,7 @@ if __name__ == "__main__":
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 500
-    n_trials = 2
+    n_trials = 100
 
     # ---- Get parameters
     model_type = args.model
