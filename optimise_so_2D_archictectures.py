@@ -180,7 +180,7 @@ if __name__ == "__main__":
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 500
-    n_trials = 2
+    n_trials = 100
 
     # ---- Get parameters
     model_type = args.model
@@ -271,7 +271,7 @@ if __name__ == "__main__":
                 if wandb_log:
                     # 1. Start a W&B run
                     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-                               group=f'{target_var} - {crop_n} - {month} - {hist_norm}', config=trial.params,
+                               group=f'{target_var} - {crop_n} - {month}', config=trial.params,
                                name=f'{target_var}-{model_type}-{crop_n}-{month}-{hist_norm}',
                                notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
                                      f'crop ID {crop_n}.')
