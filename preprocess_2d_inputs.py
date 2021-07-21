@@ -64,7 +64,7 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
         histo_year = histo[:, start_sel:(start_sel+ts_length)]
         if normalise:
             histo_max = histo_year.max(axis=0)
-            histo_min = histo_year.min(axis=0)
+            histo_min = np.zeros_like(histo_max) #histo_year.min(axis=0)
             histo_year = (histo_year - histo_min) / (histo_max - histo_min)
 
         arr_out.append(histo_year)
