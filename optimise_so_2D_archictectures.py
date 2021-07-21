@@ -180,7 +180,7 @@ if __name__ == "__main__":
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 500
-    n_trials = 100
+    n_trials = 2
 
     # ---- Get parameters
     model_type = args.model
@@ -270,19 +270,21 @@ if __name__ == "__main__":
                 # Flexible integration for any Python script
                 if wandb_log:
                     # 1. Start a W&B run
-                    wandb.init(project=cst.wandb_project, entity=cst.wandb_entity,
-                               group=model_type, config=trial.params)
-
+                    wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
+                               group=f'{target_var} - {crop_n} - {month} - {hist_norm}', config=trial.params,
+                               name=f'{target_var}-{model_type}-{crop_n}-{month}-{hist_norm}',
+                               notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
+                                     f'crop ID {crop_n}.')
                     # 2. Save model inputs and hyperparameters
-                    config = wandb.config
-                    config.model_type = model_type
-                    config.crop = crop_n
-                    config.month = month
-                    config.n_epochs = n_epochs
-                    config.batch_size = batch_size
-                    config.n_trials = n_trials
-                    wandb.run.name = f'{model_type}-{crop_n}-{month}'
-                    wandb.run.save()
+                    wandb.config.update({'model_type': model_type,
+                                         'crop_n': crop_n,
+                                         'month': month,
+                                         'norm': hist_norm,
+                                         'target': target_var,
+                                         'n_epochs': n_epochs,
+                                         'batch_size': batch_size,
+                                         'n_trials': n_trials
+                                         })
 
                     # Evaluate best model on test set
                     fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
@@ -304,5 +306,7 @@ if __name__ == "__main__":
                                "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
                                "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
                                })
+
+                    wandb.finish()
 
 # EOF
