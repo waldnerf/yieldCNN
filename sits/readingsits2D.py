@@ -47,13 +47,13 @@ def data_reader(name_file):
 
     # Area
     my_cols = list(df.columns[df.columns.str.startswith('Area')])
-    Xv = df.loc[:, my_cols].astype(dtype='float32').values
+    area = df.loc[:, my_cols].astype(dtype='float32').values
 
     # Yields
     my_cols = list(df.columns[df.columns.str.startswith('Yield')])
     y = df.loc[:, my_cols].astype(dtype='float32').values
 
-    return Xt, Xv, region_ids, years, y
+    return Xt, area, region_ids, years, y
 
 
 # -----------------------------------------------------------------------
@@ -74,8 +74,8 @@ def add_one_hot(regions):
     return new_X
 
 
-def subset_data(Xt, Xv, region_ohe, y, subset_bool):
-    return Xt[subset_bool, :, :, :], Xv[subset_bool, :], region_ohe[subset_bool, :], y[subset_bool]
+def subset_data(Xt, region_ohe, y, subset_bool):
+    return Xt[subset_bool, :, :, :], region_ohe[subset_bool, :], y[subset_bool]
 
 
 # -----------------------------------------------------------------------

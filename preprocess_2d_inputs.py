@@ -72,7 +72,7 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
     arr_out = np.stack(arr_out, axis=2)
     return arr_out
 
-def main(fn_features, fn_stats, fn_out='', save_plot=True):
+def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
     df_stats = pd.read_csv(fn_stats)
     df_stats = df_stats[['Year', 'Area', 'Yield', 'Production', 'AU_name',  'ASAP1_ID', 'Crop_name']].copy()
     df_stats['Crop_name'] = df_stats['Crop_name'].apply(lambda x: x.replace(' ', ''))
@@ -87,6 +87,7 @@ def main(fn_features, fn_stats, fn_out='', save_plot=True):
 
     df_statsw.columns = df_statsw.columns.map(lambda x: '{}_{}'.format(*x))
     df_statsw.reset_index(inplace=True)
+
     # Dropping 2001
     df_statsw = df_statsw.drop(df_statsw[df_statsw.Year == 2001].index)
 
@@ -105,7 +106,8 @@ def main(fn_features, fn_stats, fn_out='', save_plot=True):
     sfig_dir.mkdir(parents=True, exist_ok=True)
     for i, row in df_statsw.iterrows():
         # Start of season is at year -1 !!!
-        hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36, ts_start='1001', normalise=True)
+        hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36,
+                                ts_start='1001', normalise=normalise)
         hists.append(hist)
 
         # Plot data for each province-year
@@ -128,10 +130,13 @@ def main(fn_features, fn_stats, fn_out='', save_plot=True):
 if __name__ == "__main__":
     # = 'C:/Users/waldnfr/Documents/projects/leanyf'
     rdata_dir = Path(cst.root_dir, 'raw_data')
-
     fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
-    fn_out = cst.my_project.data_dir/ f'{cst.target}_full_2d_dataset.pickle'
     save_plot = False
-    main(fn_features, fn_stats, fn_out, save_plot)
+    normalise = False
+    if normalise:
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
+    else:
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+    main(fn_features, fn_stats, fn_out, normalise, save_plot)
 

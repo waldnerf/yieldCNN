@@ -143,11 +143,60 @@ def flipout_conv2d_bn_relu_drop(X, **conv_params):
     A = flipout_conv2d_bn_relu(X, **conv_params)
     return Dropout(dropout_rate)(A)
 
-
 # -----------------------------------------------------------------------
 # ---------------------- Training models
 # -----------------------------------------------------------------------
 # -----------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------
+def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_params):
+    """
+    Model fitting
+    :param model: keras model
+    :param X_train: Traning data. Should be a list containing ts_input (time series inputs)
+     and/or v_input (vector inputs)
+    :param ys_train: Scaled target data
+    :param X_val: Validation data. Should be a list containing ts_input (time series inputs)
+     and/o v_input (vector inputs)
+    :param ys_val: Scaled target data
+    :param out_model_file: model filename
+    :param train_params: parameters for training
+    :return:
+    """
+    # ---- variables
+    n_epochs = train_params.setdefault("n_epochs", 20)
+    batch_size = train_params.setdefault("batch_size", 32)
+
+    lr = train_params.setdefault("lr", 0.001)
+    beta_1 = train_params.setdefault("beta_1", 0.9)
+    beta_2 = train_params.setdefault("beta_2", 0.999)
+    decay = train_params.setdefault("decay", 0.01)
+
+    # ---- optimizer
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
+
+    # ---- monitoring the minimum validation loss
+    checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
+                                 verbose=0, save_best_only=True, mode='min')
+    callback_list = [checkpoint]
+    model.compile(optimizer=opt,
+                  loss={'out1': 'mse'},
+                  loss_weights={'out1': 1.},
+                  metrics=['mse'])
+
+    model_hist = model.fit(X_train,
+                           {'out1': ys_train},
+                           epochs=n_epochs,
+                           batch_size=batch_size, shuffle=True,
+                           validation_data=(X_val, {'out1': ys_val}),
+                           verbose=0, callbacks=callback_list)
+
+    del model
+    model = load_model(out_model_file)
+    pred = model.predict(x=X_val)
+    return model, pred
+
 def trainTestModel(model, Xt_train, y_train, X_test, Y_test_onehot, out_model_file, **train_params):
     # ---- variables
     n_epochs = train_params.setdefault("n_epochs", 20)
@@ -233,81 +282,7 @@ def cv_Model_SISO(model, Xt_train, ys_train, Xt_val, ys_val, out_model_file, **t
     pred = model.predict(x={'ts_input': Xt_val})
     return model, pred
 
-
 # -----------------------------------------------------------------------
-def cv_Model_SIMO_st(model, Xt_train, ys_train, Xt_val, ys_val, out_model_file, **train_params):
-    # ---- variables
-    n_epochs = train_params.setdefault("n_epochs", 20)
-    batch_size = train_params.setdefault("batch_size", 32)
-
-    lr = train_params.setdefault("lr", 0.001)
-    beta_1 = train_params.setdefault("beta_1", 0.9)
-    beta_2 = train_params.setdefault("beta_2", 0.999)
-    decay = train_params.setdefault("decay", 0.01)
-
-    # ---- optimizer
-    opt = optimizers.Adam(lr=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
-
-    # ---- monitoring the minimum validation loss
-    checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
-                                 verbose=0, save_best_only=True, mode='min')
-    callback_list = [checkpoint]
-    model.compile(optimizer=opt,
-                  loss={'out1': 'mse'},
-                  loss_weights={'out1': 1.},
-                  metrics=['mse'])
-
-    hist = model.fit(Xt_train,
-                     {'out1': ys_train},
-                     epochs=n_epochs,
-                     batch_size=batch_size, shuffle=True,
-                     validation_data=(Xt_val,
-                                      {'out1': ys_val}),
-                     verbose=0, callbacks=callback_list)
-
-    del model
-    model = load_model(out_model_file)
-    pred = model.predict(x={'ts_input': Xt_val})
-    return model, pred
-
-
-# -----------------------------------------------------------------------
-def cv_Model_SIMO_mt(model, Xt_train, ys_train, Xt_val, ys_val, out_model_file, **train_params):
-    # ---- variables
-    n_epochs = train_params.setdefault("n_epochs", 20)
-    batch_size = train_params.setdefault("batch_size", 32)
-
-    lr = train_params.setdefault("lr", 0.001)
-    beta_1 = train_params.setdefault("beta_1", 0.9)
-    beta_2 = train_params.setdefault("beta_2", 0.999)
-    decay = train_params.setdefault("decay", 0.01)
-
-    # ---- optimizer
-    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
-
-    # ---- monitoring the minimum validation loss
-    checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
-                                 verbose=0, save_best_only=True, mode='min')
-    callback_list = [checkpoint]
-    model.compile(optimizer=opt,
-                  loss={'out1': 'mse', 'out2': 'mse', 'out3': 'mse'},
-                  loss_weights={'out1': 1., 'out2': 1., 'out3': 1.},
-                  metrics=['mse'])
-
-    hist = model.fit(Xt_train,
-                     {'out1': ys_train[:, [0]], 'out2': ys_train[:, [1]], 'out3': ys_train[:, [2]]},
-                     epochs=n_epochs,
-                     batch_size=batch_size, shuffle=True,
-                     validation_data=(Xt_val,
-                                      {'out1': ys_val[:, [0]], 'out2': ys_val[:, [1]], 'out3': ys_val[:, [2]]}),
-                     verbose=0, callbacks=callback_list)
-
-    del model
-    model = load_model(out_model_file)
-    pred = model.predict(x={'ts_input': Xt_val})
-    return model, pred
-
-
 def cv_Model_MIMO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, out_model_file, **train_params):
     # ---- variables
     n_epochs = train_params.setdefault("n_epochs", 20)
@@ -378,7 +353,6 @@ def cv_Model_MISO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, o
     model = load_model(out_model_file)
     pred = model.predict(x={'ts_input': Xt_val, 'v_input': Xv_val})
     return model, pred
-
 
 # -----------------------------------------------------------------------
 def trainValTestModel_SISO(model, Xt_train, ys_train, Xt_val, ys_val,
