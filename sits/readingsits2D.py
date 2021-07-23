@@ -53,7 +53,10 @@ def data_reader(name_file):
     my_cols = list(df.columns[df.columns.str.startswith('Yield')])
     y = df.loc[:, my_cols].astype(dtype='float32').values
 
-    return Xt, area, region_ids, years, y
+    # make sure that we do not keep entries with 0 ton/ha yields
+    yields_2_keep = (y > 0).any(axis=1)
+
+    return Xt[yields_2_keep, :, :, :], area[yields_2_keep, :], region_ids[yields_2_keep], years[yields_2_keep], y[yields_2_keep, :]
 
 
 # -----------------------------------------------------------------------
