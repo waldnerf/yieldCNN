@@ -38,8 +38,8 @@ else:
             wandb_project = 'leanyf'
             wandb_entity = 'waldnerf'
         else:
-            root_dir = Path(r"/home/ubuntu/leanyf")
-            git_dir = Path(r'/home/ubuntu/yieldcnn')
+            root_dir = Path(r"/home/ec2-user/leanyf")
+            git_dir = Path(r'/home/ec2-user/yieldcnn')
             wandb_project = 'leanyf'
             wandb_entity = 'waldnerf'
 

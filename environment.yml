@@ -11,5 +11,5 @@ dependencies:
   - tensorflow==2.3.0
   - optuna==2.6.0
   - pip:
-    - cudatoolkit==10.1
+    #- cudatoolkit==10.1
     - wandb
