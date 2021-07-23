@@ -3,6 +3,7 @@ from pathlib import Path
 import getpass
 import sys
 import shutil
+from IPython import get_ipython
 
 # set repository path dependant on username, add new users here:
 if sys.platform == 'win32':
@@ -32,8 +33,13 @@ else:
     else:
         print('Not running on CoLab')
         if getpass.getuser() == 'waldnfr':
-            root_dir = Path(r"/home/waldnfr/data/leanyf")
-            git_dir = Path(r'/home/waldnfr/git')
+            root_dir = Path(r"/home/ubuntu/leanyf")
+            git_dir = Path(r'/home/ubuntu/yieldcnn')
+            wandb_project = 'leanyf'
+            wandb_entity = 'waldnerf'
+        else:
+            root_dir = Path(r"/home/ec2-user/leanyf")
+            git_dir = Path(r'/home/ec2-user/yieldcnn')
             wandb_project = 'leanyf'
             wandb_entity = 'waldnerf'
 
