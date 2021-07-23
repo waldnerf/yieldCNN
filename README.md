@@ -15,7 +15,7 @@ If a GPU is available, then type in:
 ```pip install tensorflow-gpu==2.3.0```
 
 You can monitor GPU usage with the following command: 
-```watch -n 1 nvidia-smi``
+```watch -n 1 nvidia-smi```
 
 ## Contributors
  - [Dr. Franz Waldner](https://scholar.google.com/citations?user=4z2zcXwAAAAJ&hl=en&oi=ao)
