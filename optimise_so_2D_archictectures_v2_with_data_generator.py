@@ -25,6 +25,8 @@ from model_evaluation import *
 from outputfiles.evaluation import *
 from sits.readingsits2D import *
 import mysrc.constants as cst
+import sits.data_generator as data_generator
+
 
 
 def objective_2DCNN_SISO(trial):
@@ -329,24 +331,9 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
     Xt_full, Xv, region_id, groups, y = data_reader(fn_indata)
 
     # ---- Data generator (MM)
-    # Data augmentation. First data are systematically shifted left and right of xshift ( xshift = [1,2]). We thus have the orginal histo plus
-    # the four shifted (5 in total). On this we add gaussian noise (norm, gauss add, mask, norm back). In total we have 10 samples from 1 histo
-    # After that we add gaussian to the corresponding yield as well. This will double the samples (20 from 1)
-
-    #1 - shift left (no matter if we leav the last deks unchanged, they will not be used)
-    Xt_full_l1 = np.roll(Xt_full, -1, axis=2)
-    Xt_full_l2 = np.roll(Xt_full, -2, axis=2)
-    #2 - shift right
-    Xt_full_r1 = np.roll(Xt_full, 1, axis=2)
-    Xt_full_r2 = np.roll(Xt_full, 2, axis=2)
-    # gauss noise
-    # first I have to normalize count (0 to n)  in quasi [0,1] to apply a gaussian noise with 0 mean and SD
-    min_per_t, max_per_t = computingMinMax(Xt_full)
-    # Normalise training set
-    Xt_full_norm = normalizingData(Xt_full, min_per_t, max_per_t)
-    Xt_full_n = Xt_full + np.random.normal(0, 0.1, Xt_full.shape)
-    Xt_full_n = normalizingData(Xt_full_n, min_per_t, max_per_t, back=True)
-
+    generator = data_generator.DG(Xt_full, region_id, groups, y, Xshift=True, Xnoise=True, Ynoise=True)
+    res = generator.generate()
+    #Xt_full_a, Xv_a, region_id_a, groups_a, y_a, type_a = data_generator.generate(Xt_full, region_id, groups, y, Xshift=True) #input for the class
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
@@ -373,6 +360,7 @@ def main(fn_indata, dir_out,  fn_asapID2AU, fn_stats90, model_type='2DCNN_MISO',
                 #Xt = Xt_full[:, :, 0:idx, :]
                 idx = (month + 1) * 3 + 3 #MM: now we data starts one month earlier (09-01) to allow time shift
                 Xt = Xt_full[:, :, 3:idx, :]
+
 
 
                 study = optuna.create_study(direction='maximize',
