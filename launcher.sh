@@ -2,10 +2,10 @@
 
 echo activate conda environment
 eval "$(conda shell.bash hook)"
-conda activate leanyf
+conda activate tensorflow2_latest_p37
 
 # check if data are already there, if not download from s3 bucket
-DIR="/home/ubuntu/leanyf"
+DIR="/home/ec2-user/leanyf"
 if [ -d "$DIR" ]; then
   ### Take action if $DIR exists ###
   echo "${DIR} exists"
