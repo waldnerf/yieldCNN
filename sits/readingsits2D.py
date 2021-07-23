@@ -10,7 +10,7 @@ import pandas as pd
 import math
 import random
 import itertools
-import pickle
+import pickle5 as pickle
 from tensorflow.keras.utils import to_categorical
 
 import csv
