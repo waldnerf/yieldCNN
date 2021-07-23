@@ -37,6 +37,11 @@ else:
             git_dir = Path(r'/home/ubuntu/yieldcnn')
             wandb_project = 'leanyf'
             wandb_entity = 'waldnerf'
+        else:
+            root_dir = Path(r"/home/ubuntu/leanyf")
+            git_dir = Path(r'/home/ubuntu/yieldcnn')
+            wandb_project = 'leanyf'
+            wandb_entity = 'waldnerf'
 
 for i in [str(root_dir), str(git_dir)]:
     sys.path.insert(0, i)

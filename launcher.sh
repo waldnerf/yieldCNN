@@ -41,5 +41,5 @@ echo "Exit status: $?"
 echo Syncing on S3
 aws s3 cp s3://ml4cast/leanyf $DIR --recursive
 
-
+echo shutting down machine
 sudo shutdown -h now
