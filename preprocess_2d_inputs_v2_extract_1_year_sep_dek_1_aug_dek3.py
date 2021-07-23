@@ -14,6 +14,7 @@ pd.set_option('display.max_columns', 10)
 
 import mysrc.constants as cst
 from outputfiles.plot import *
+import pickle
 
 def get_season(date_, start_month, sep='-'):
     date_ = str(date_)
@@ -38,7 +39,7 @@ def retain_regions(df, groups, key, target, cum=0.9):
         my_list = my_list + list(df_i[target])
     return list(set(my_list))
 
-def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
+def get_2D_histogram(df, unit, year, ts_length, ts_start):
     binDict = {
         'NDVI': {'min': 0.05, 'range': 0.85, 'n': 64},
         'rad': {'min': 40000, 'range': 280000, 'n': 64},
@@ -62,17 +63,13 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
 
         start_sel = np.where([x == f'{year}{ts_start}' for x in xValues])[0][0]
         histo_year = histo[:, start_sel:(start_sel+ts_length)]
-        if normalise:
-            histo_max = histo_year.max(axis=0)
-            histo_min = np.zeros_like(histo_max) #histo_year.min(axis=0)
-            histo_year = (histo_year - histo_min) / (histo_max - histo_min)
-
         arr_out.append(histo_year)
 
     arr_out = np.stack(arr_out, axis=2)
     return arr_out
 
-def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
+def main(fn_features, fn_stats, fn_out=''):
+
     df_stats = pd.read_csv(fn_stats)
     df_stats = df_stats[['Year', 'Area', 'Yield', 'Production', 'AU_name',  'ASAP1_ID', 'Crop_name']].copy()
     df_stats['Crop_name'] = df_stats['Crop_name'].apply(lambda x: x.replace(' ', ''))
@@ -81,46 +78,50 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
     region_ids = retain_regions(df_filter, groups='Crop_name', key='Production', target='ASAP1_ID')
     df_stats = df_stats.loc[df_stats['ASAP1_ID'].isin(region_ids), :].copy()
 
+
     df_statsw = df_stats.pivot_table(index=['ASAP1_ID', 'AU_name',  'Year'],
                                      columns=['Crop_name'],
                                      values=['Area', 'Yield']).fillna(0)
 
     df_statsw.columns = df_statsw.columns.map(lambda x: '{}_{}'.format(*x))
     df_statsw.reset_index(inplace=True)
-
-    # Dropping 2001
     df_statsw = df_statsw.drop(df_statsw[df_statsw.Year == 2001].index)
 
-    # go to area proportions
+    # go to areal proportions
     my_cols = list(df_statsw.columns[df_statsw.columns.str.startswith('Area')])
     df_statsw.loc[:, my_cols] = df_statsw.loc[:, my_cols].apply(lambda x: x / x.sum(), axis=1)
 
     # -- Read and create 2D images
     df_raw = pd.read_csv(fn_features)
     df_raw = df_raw.rename(columns={"reg0_id": "ASAP1_ID"})
+    # MM; NDVI of year 2001 starts in 10 01 while we need 09 01 for dtata augumentation
+    # we mirror october into september
+    df_mirrored = df_raw[(df_raw['variable_name']=='NDVI') & (df_raw['dekad']== 20011001)]
+    df_mirrored['dekad'] = 20010921
+    df_raw = df_raw.append(df_mirrored)
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011011)]
+    df_mirrored['dekad'] = 20010911
+    df_raw = df_raw.append(df_mirrored)
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011021)]
+    df_mirrored['dekad'] = 20010901
+    df_raw = df_raw.append(df_mirrored)
 
     hists = []
-    # Histograms with 4 variables
     variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
-    sfig_dir = cst.my_project.figs_dir / '2D_inputs'
+    sfig_dir = cst.my_project.figs_dir / '2D_inputs_v2'
     sfig_dir.mkdir(parents=True, exist_ok=True)
     for i, row in df_statsw.iterrows():
-        # Start of season is at year -1 !!!
-        hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36,
-                                ts_start='1001', normalise=normalise)
-        hists.append(hist)
-
-        # Plot data for each province-year
-        super_title = f'{row["AU_name"]} ({row["Year"]}) - barley {round(row["Yield_Barley"], 2)} t/ha, ' \
-                      f'soft wheat {round(row["Yield_Softwheat"], 2)} t/ha, ' \
+        hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year']-1), ts_length=36, ts_start='0901')
+        super_title = f'{row["AU_name"]} ({row["Year"]}) - barley {round(row["Yield_Barley"], 2)} t/ha,' \
+                      f' soft wheat {round(row["Yield_Softwheat"], 2)} t/ha, ' \
                       f'durum wheat {round(row["Yield_Durumwheat"], 2)} t/ha'
         fig_name = sfig_dir / f'{row["AU_name"]}_{row["Year"]}_2Dinputs.png'
-        if save_plot:
-            plot_2D_inputs_by_region(hist, variables, super_title, fig_name=fig_name)
-            plt.close()
+        plot_2D_inputs_by_region(hist, variables, super_title, fig_name=fig_name)
+        plt.close()
+        hists.append(hist)
 
-    # Stacking and saving data
     hists = np.stack(hists, axis=0)
+
     if fn_out != '':
         # Saving the objects:
         with open(fn_out, 'wb') as f:
@@ -130,13 +131,9 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
 if __name__ == "__main__":
     # = 'C:/Users/waldnfr/Documents/projects/leanyf'
     rdata_dir = Path(cst.root_dir, 'raw_data')
+
     fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
-    save_plot = False
-    normalise = False
-    if normalise:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
-    else:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
-    main(fn_features, fn_stats, fn_out, normalise, save_plot)
+    fn_out = cst.my_project.data_dir/ f'{cst.target}_full_2d_dataset_v2.pickle'
+    main(fn_features, fn_stats, fn_out)
 

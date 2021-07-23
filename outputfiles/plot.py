@@ -111,7 +111,7 @@ def plot_2D_inputs_by_region(hist, variables, title, fig_name=None, _figsize=(16
         plt.sca(ax)
         pcm = ax.imshow(np.flipud(hist[:, :, col]), cmap=cmaps[col])
         fig.colorbar(pcm, ax=ax)
-        plt.title(variables[col])
+
     plt.suptitle(title)
     plt.tight_layout()
 
