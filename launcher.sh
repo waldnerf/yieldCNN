@@ -1,4 +1,5 @@
-#
+#!/bin/bash
+
 echo activate conda environment
 eval "$(conda shell.bash hook)"
 conda activate leanyf

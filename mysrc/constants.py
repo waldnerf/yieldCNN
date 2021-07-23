@@ -3,6 +3,7 @@ from pathlib import Path
 import getpass
 import sys
 import shutil
+from IPython import get_ipython
 
 # set repository path dependant on username, add new users here:
 if sys.platform == 'win32':
