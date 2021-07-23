@@ -33,7 +33,7 @@ def data_reader(name_file):
     """
 
     with open(name_file, 'rb') as handle:
-        d = pickle.load(handle)
+        d = pickle.load(handle, protocol=pickle.HIGHEST_PROTOCOL)
     df = d['stats']
 
     # time series
