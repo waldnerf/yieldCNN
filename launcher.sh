@@ -18,21 +18,21 @@ fi
 echo Execute script
 
 # Option 1: Norm by province, OHE, Yield
-python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_MISO --target yield & process_id=$!
+nohup python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_MISO --target yield & process_id=$!
 # Option 2: Norm by province, no OHE, Yield
-#python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_SISO --target yield & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_SISO --target yield & process_id=$!
 # Option 3: Norm by province, OHE, Yield
-#python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_MISO --target yield & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_MISO --target yield & process_id=$!
 # Option 4: Not norm by province, no OHE, Yield
-#python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_SISO --target yield & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_SISO --target yield & process_id=$!
 # Option 5: Norm by province, OHE, Area
-#python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_MISO --target area & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_MISO --target area & process_id=$!
 # Option 6: Norm by province, no OHE, Area
-#python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_SISO --target area & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation True --model 2DCNN_SISO --target area & process_id=$!
 # Option 7: Not norm by province, OHE, Area
-#python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_MISO --target area & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_MISO --target area & process_id=$!
 # Option 8: Not norm by province, no OHE, Area
-#python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_SISO --target area & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation False --model 2DCNN_SISO --target area & process_id=$!
 
 echo "PID: $process_id"
 wait $process_id
