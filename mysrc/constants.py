@@ -32,8 +32,8 @@ else:
     else:
         print('Not running on CoLab')
         if getpass.getuser() == 'waldnfr':
-            root_dir = Path(r"/home/waldnfr/data/leanyf")
-            git_dir = Path(r'/home/waldnfr/git')
+            root_dir = Path(r"/home/ubuntu/leanyf")
+            git_dir = Path(r'/home/ubuntu/yieldcnn')
             wandb_project = 'leanyf'
             wandb_entity = 'waldnerf'
 
