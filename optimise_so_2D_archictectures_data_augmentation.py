@@ -87,7 +87,7 @@ def objective_2DCNN(trial):
         Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, subset_bool)
         # augmentation
         if data_augmentation:
-            Xt_trainA, Xv_trainA, y_trainA = generator.generate(Xt_train.shape[2], subset_bool)
+            Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], subset_bool)
         Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
