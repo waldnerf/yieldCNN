@@ -167,7 +167,7 @@ def objective_2DCNN(trial):
 if __name__ == "__main__":
     # ---- Define parser
     parser = argparse.ArgumentParser(description='Optimise 2D CNN for yield and area forecasting')
-    parser.add_argument('--normalisation', type=bool, default=True, help='Should input data be normalised histograms?')
+    parser.add_argument('--normalisation', type=str, default='norm', choices=['norm', 'raw'], help='Should input data be normalised histograms?')
     parser.add_argument('--model', type=str, default='2DCNN_SISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     overwrite = args.overwrite
 
     # ---- Define some paths to data
-    if args.normalisation:
+    if args.normalisation == 'norm':
         fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
         hist_norm = 'norm'
     else:
