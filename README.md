@@ -17,6 +17,10 @@ If a GPU is available, then type in:
 You can monitor GPU usage with the following command: 
 ```watch -n 1 nvidia-smi```
 
+## To do
+- [ ] merge preprocessing
+-  [ ] normalisation per province 
+
 ## Contributors
  - [Dr. Franz Waldner](https://scholar.google.com/citations?user=4z2zcXwAAAAJ&hl=en&oi=ao)
 
