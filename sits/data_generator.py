@@ -24,15 +24,13 @@ class DG(object):
     Assumption: histograms are raw data or mormalized betwen 0 and 0, i.e. zeros are true zeros (to be masked)
     """
 
-    def __init__(self, Xt_full, region_id, groups, y, Xshift=False, Xnoise=False, Xmin_max_standardized_noiseSD=0.05,
+    def __init__(self, Xt_full, region_ohe, y, Xshift=False, Xnoise=False, Xmin_max_standardized_noiseSD=0.05,
                  Ynoise=False, Ymin_max_standardized_noiseSD=0.05):
         """Instantiates the class with metadata"""
         self.X = Xt_full         # the full set histograms to be augmented (must be complete histo, i.e. 36 dekads, shape (510 samples,64 y-bins,36 x-time-steps,4-bands)
         self.X_augmented = None
-        self.region_id = region_id
-        self.region_id_augmented = None
-        self.groups = groups
-        self.groups_augmented = None
+        self.region_ohe = region_ohe
+        self.region_ohe_augmented = None
         self.y = y              # the var to be estimated, can be yield or area
         self.y_augmented = None
         self.Xshift = Xshift
@@ -41,23 +39,27 @@ class DG(object):
         self.Ynoise = Ynoise
         self.Ymin_max_standardized_noiseSD = Ymin_max_standardized_noiseSD
 
-    def generate(self, save_to_csv=True):
+    def generate(self, lenTS, subset_bool):
+        # lenTS: the length of the time series to return (starting from index 3 that is 1st of October
+        # subset_bool: train samples to be augmented
+
         # set augmented arrays to the original data arrays
-        self.X_augmented = self.X
-        self.region_id_augmented = self.region_id
-        self.groups_augmented = self.groups
-        self.y_augmented = self.y
+        self.X_augmented = self.X[subset_bool, :, :, :]
+        X_current = self.X_augmented.copy()
+        self.region_ohe_augmented = self.region_ohe[subset_bool,:]
+        #self.groups_augmented = self.groups[subset_bool]
+        self.y_augmented = self.y[subset_bool,:]
 
         if self.Xshift == True:
             # 1 - shift left (no matter if we leav the last deks unchanged, they will not be used)
-            self.X_augmented = np.concatenate((self.X_augmented, np.roll(self.X, -1, axis=2)), axis=0)
-            self.X_augmented = np.concatenate((self.X_augmented, np.roll(self.X, -2, axis=2)), axis=0)
+            self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, -1, axis=2)), axis=0)
+            self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, -2, axis=2)), axis=0)
             # 2 - shift right
-            self.X_augmented = np.concatenate((self.X_augmented, np.roll(self.X, 1, axis=2)), axis=0)
-            self.X_augmented = np.concatenate((self.X_augmented, np.roll(self.X, 2, axis=2)), axis=0)
+            self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, 1, axis=2)), axis=0)
+            self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, 2, axis=2)), axis=0)
             # add unchanged data for the other variables
-            self.region_id_augmented = np.tile(self.region_id_augmented, 5)
-            self.groups_augmented = np.tile(self.groups_augmented, 5)
+            self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (5,1))
+            #self.groups_augmented = np.tile(self.groups_augmented, 5)
             self.y_augmented = np.tile(self.y_augmented, (5, 1))
             if False:
                 variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
@@ -95,8 +97,9 @@ class DG(object):
             # now denormalize back and add to augmented sample
             self.X_augmented = np.concatenate((self.X_augmented, normMinMaxPerImagePerBand(X0, min_per_image, max_per_image, back=True)), axis=0)
             # add data for the other variables
-            self.region_id_augmented = np.tile(self.region_id_augmented, 2)
-            self.groups_augmented = np.tile(self.groups_augmented, 2)
+            #self.region_ohe_augmented = np.tile(self.region_ohe_augmented, 2)
+            self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
+            #self.groups_augmented = np.tile(self.groups_augmented, 2)
             self.y_augmented = np.tile(self.y_augmented, (2, 1))
             if False:
                 id2plt = 1000 # refers to a sample before adding noise (must be < n_before_noise)
@@ -152,9 +155,10 @@ class DG(object):
             # now denormalize back and add to sample
             self.y_augmented = np.concatenate((self.y_augmented, normMinMaxPerImagePerBand(y0, min_per_crop, max_per_crop, back=True)), axis=0)
             # add data for the other variables
-            self.region_id_augmented = np.tile(self.region_id_augmented, 2)
-            self.groups_augmented = np.tile(self.groups_augmented, 2)
+            #self.region_id_augmented = np.tile(self.region_id_augmented, 2)
+            self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
+            #self.groups_augmented = np.tile(self.groups_augmented, 2)
             self.X_augmented = np.tile(self.X_augmented, (2,1,1,1))
-
-        return self.X_augmented, self.region_id_augmented, self.groups_augmented,  self.y_augmented
+        # adjust dimension of lenTS
+        return self.X_augmented[:,:,3:3+lenTS], self.region_ohe_augmented, self.y_augmented
 

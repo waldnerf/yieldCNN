@@ -26,6 +26,7 @@ from model_evaluation import *
 from outputfiles.evaluation import *
 from sits.readingsits2D import *
 import mysrc.constants as cst
+import sits.data_generator as data_generator
 
 
 def objective_2DCNN(trial):
@@ -80,13 +81,19 @@ def objective_2DCNN(trial):
     for test_i in np.unique(groups):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
-
-        Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
+        # TODO: Franz check
+        # Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
+        subset_bool = [x in train_i for x in groups]
+        Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, subset_bool)
+        # augmentation
+        if data_augmentation:
+            Xt_trainA, Xv_trainA, y_trainA = generator.generate(Xt_train.shape[2], subset_bool)
         Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
-        # If images are already normalised per region, the following has no effect
+        # If images are already normalised per image, the following has no effect
         # if not this is a minmax scaling based on the training set.
+        #TODO: Franz we have to be care, if data would be normalized by region (and not by image), the following norm would have an effect
         min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
         # Normalise training set
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
@@ -173,6 +180,9 @@ if __name__ == "__main__":
     parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
     parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
     parser.add_argument('--overwrite', type=bool, default=True, help='Overwrite existing results')
+    parser.add_argument('--Xshift', type=bool, default=True, help='Data aug, shiftX')
+    parser.add_argument('--Xnoise', type=bool, default=True, help='Data aug, noiseX')
+    parser.add_argument('--Ynoise', type=bool, default=True, help='Data aug, noiseY')
     # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
 
@@ -182,6 +192,10 @@ if __name__ == "__main__":
     batch_size = 500
     n_trials = 100
 
+    #TODO: Franz fix it (check args)
+    if args.Xshift == True or args.Xnoise == True or args.Ynoise == True:
+        data_augmentation = True
+
     # ---- Get parameters
     model_type = args.model
     target_var = args.target
@@ -190,10 +204,12 @@ if __name__ == "__main__":
 
     # ---- Define some paths to data
     if args.normalisation == 'norm':
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
+        #TODO: Franz, these file must be generated with preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
+        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm_v2.pickle'
         hist_norm = 'norm'
     else:
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+        # TODO: Franz, these file must be generated with preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
+        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw_v2.pickle'
         hist_norm = 'raw'
     print("Input file: ", os.path.basename(str(fn_indata)))
 
@@ -209,7 +225,7 @@ if __name__ == "__main__":
 
     # ---- Downloading
     Xt_full, area, region_id, groups, yld = data_reader(fn_indata)
-    
+
     # ---- Format target variable
     if target_var == 'yield':
         y = yld
@@ -222,6 +238,10 @@ if __name__ == "__main__":
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
+
+    if data_augmentation:
+        # Instantiate data generator
+        generator = data_generator.DG(Xt_full, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise, Ynoise=args.Ynoise)
 
     # loop through all crops
     for crop_n in range(y.shape[1]):
@@ -236,7 +256,8 @@ if __name__ == "__main__":
                 pass
             else:
                 rm_tree(dir_tgt)
-                Xt = Xt_full[:, :, 0:(month * 3), :]
+                # TODO: Franz, this has changed from  Xt = Xt_full[:, :, 0:(month * 3), :] because data start in Sep using preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
+                Xt = Xt_full[:, :, 3:(3 + month * 3), :]
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
