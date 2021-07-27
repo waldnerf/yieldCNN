@@ -12,11 +12,11 @@
 import sys, os
 
 from deeplearning.architecture_features import *
-import keras
-from keras import layers
-from keras.layers import Flatten
-from keras.layers import GRU, Bidirectional, LSTM, GlobalAveragePooling1D
-from keras import backend as K
+import tensorflow.keras
+from tensorflow.keras import layers
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import GRU, Bidirectional, LSTM, GlobalAveragePooling1D
+from tensorflow.keras import backend as K
 
 
 # -----------------------------------------------------------------------
@@ -25,7 +25,7 @@ from keras import backend as K
 
 
 # -----------------------------------------------------------------------
-def Archi_CNNw_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
+def Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
                     activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
@@ -56,14 +56,14 @@ def Archi_CNNw_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, 
     out1 = Dense(1, activation='linear', name='out1')(X)
 
     # Create model.
-    model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_CNNw_SISO')
+    model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_1DCNN_SISO')
     if verbose:
         model.summary()
     return model
 
 
 # -----------------------------------------------------------------------
-def Archi_CNNw_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
+def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
                     activation='sigmoid', v_fc=1, nbunits_v=10, verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
@@ -108,7 +108,7 @@ def Archi_CNNw_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size
     out1 = Dense(1, activation='relu', name='out1')(X)
 
     # Create model.
-    model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_CNNw_MISO')
+    model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_1DCNN_MISO')
     if verbose:
         model.summary()
     return model
