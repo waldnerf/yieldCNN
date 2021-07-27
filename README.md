@@ -1,7 +1,7 @@
 # Lean Temporal Convolutional Neural Network for yield forecasting
 Training temporal Convolution Neural Networks (CNNs) on satellite image time series for yield forecasting.
 
-![Model architecture](./figures/yieldCNN_architecture.png)
+![Model architecture](figures/yieldCNN_architecture.png)
 
 
 ## Prerequisites
