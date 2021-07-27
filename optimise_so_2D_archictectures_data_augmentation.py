@@ -224,27 +224,34 @@ if __name__ == "__main__":
     out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
 
     # ---- Downloading
-    Xt_full, area, region_id, groups, yld = data_reader(fn_indata)
-
-    # ---- Format target variable
-    if target_var == 'yield':
-        y = yld
-        xlabels = 'Predictions (t/ha)'
-        ylabels = 'Observations (t/ha)'
-    elif target_var == 'area':
-        y = area
-        xlabels = 'Predictions (%)'
-        ylabels = 'Observations (%)'
-
-    # ---- Convert region to one hot
-    region_ohe = add_one_hot(region_id)
-
-    if data_augmentation:
-        # Instantiate data generator
-        generator = data_generator.DG(Xt_full, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise, Ynoise=args.Ynoise)
+    Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
 
     # loop through all crops
-    for crop_n in range(y.shape[1]):
+    for crop_n in range(yld_full.shape[1]):
+        # make sure that we do not keep entries with 0 ton/ha yields,
+        yields_2_keep = ~(yld_full[:, crop_n] <= 0)
+        Xt_nozero = Xt_full[yields_2_keep, :, :, :]
+        area = area_full[yields_2_keep, :]
+        region_id = region_id_full[yields_2_keep]
+        groups = groups_full[yields_2_keep]
+        yld = yld_full[yields_2_keep, :]
+        # ---- Format target variable
+        if target_var == 'yield':
+            y = yld
+            xlabels = 'Predictions (t/ha)'
+            ylabels = 'Observations (t/ha)'
+        elif target_var == 'area':
+            y = area
+            xlabels = 'Predictions (%)'
+            ylabels = 'Observations (%)'
+
+        # ---- Convert region to one hot
+        region_ohe = add_one_hot(region_id)
+
+        if data_augmentation:
+            # Instantiate a data generator for this crop
+            generator = data_generator.DG(Xt_nozero, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise,
+                                          Ynoise=args.Ynoise)
         dir_crop = dir_res / f'crop_{crop_n}'
         dir_crop.mkdir(parents=True, exist_ok=True)
         # loop by month
@@ -257,7 +264,7 @@ if __name__ == "__main__":
             else:
                 rm_tree(dir_tgt)
                 # TODO: Franz, this has changed from  Xt = Xt_full[:, :, 0:(month * 3), :] because data start in Sep using preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
-                Xt = Xt_full[:, :, 3:(3 + month * 3), :]
+                Xt = Xt_nozero[:, :, 3:(3 + month * 3), :]
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
