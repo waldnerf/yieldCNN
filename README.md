@@ -37,5 +37,5 @@ Note: after this option 3, the norm min max over the whole data set after train/
 
 ## Contributors
  - [Dr. Franz Waldner](https://scholar.google.com/citations?user=4z2zcXwAAAAJ&hl=en&oi=ao)
-
+ - [Dr. Michele Meroni](https://scholar.google.com/citations?user=iQk-wj8AAAAJ&hl=en&oi=ao)
 
