@@ -13,3 +13,4 @@ dependencies:
   - pip:
     #- cudatoolkit==10.1
     - wandb
+    - dill==0.3.4

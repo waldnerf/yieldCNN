@@ -7,9 +7,10 @@ from IPython import get_ipython
 
 # set repository path dependant on username, add new users here:
 if sys.platform == 'win32':
-    if getpass.getuser() == 'franc':
-        root_dir = Path('C:/Users/franc/OneDrive/Documents/projects/crop_classification')
-        git_dir = Path(r'C:/Users/franc/OneDrive/Documents/git/temporalCNN')
+    print(getpass.getuser())
+    if getpass.getuser() == 'FranzJRC':
+        root_dir = Path('C:/Users/FranzJRC/Documents/projects/leanyf')
+        git_dir = Path(r'C:/Users/FranzJRC/Documents/git')
         wandb_project = 'leanyf'
         wandb_entity = 'waldnerf'
     elif getpass.getuser() == 'waldnfr':
@@ -22,7 +23,7 @@ if sys.platform == 'win32':
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
         wandb_entity = 'cinderella'
-       
+
 else:
     if 'google.colab' in str(get_ipython()):
         print('Running on CoLab')
