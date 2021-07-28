@@ -22,8 +22,8 @@ nohup python optimise_so_1D_architectures.py --model 1DCNN_SISO & process_id=$!
 # Option 2: 1DCNN_MISO
 #nohup python optimise_so_1D_architectures.py --model 1DCNN_MISO & process_id=$!
 
-#echo "PID: $process_id"
-#wait $process_id
+echo "PID: $process_id"
+wait $process_id
 #echo "Exit status: $?"
 
 echo Syncing on S3
