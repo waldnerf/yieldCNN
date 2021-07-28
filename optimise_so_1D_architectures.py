@@ -52,7 +52,7 @@ def objective_1DCNN(trial):
                                  activation=activation_,
                                  verbose=False)
 
-    elif model_type == '1DCNN_SISO':
+    elif model_type == '1DCNN_MISO':
         v_fc_ = trial.suggest_categorical('v_fc', [0, 1])
         nbunits_v_ = trial.suggest_int('nbunits_v', 10, 25, step=5)
         Xt_ = reshape_data(Xt, n_channels)
@@ -169,7 +169,7 @@ def objective_1DCNN(trial):
 if __name__ == "__main__":
     # ---- Define parser
     parser = argparse.ArgumentParser(description='Optimise 1D CNN for yield and area forecasting')
-    parser.add_argument('--model', type=str, default='1DCNN_SISO',
+    parser.add_argument('--model', type=str, default='1DCNN_MISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
     parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
