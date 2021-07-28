@@ -172,7 +172,7 @@ if __name__ == "__main__":
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
     parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
-    parser.add_argument('--overwrite', type=bool, default=True, help='Overwrite existing results')
+    parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
     # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
 

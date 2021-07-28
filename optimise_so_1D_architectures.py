@@ -172,15 +172,14 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, default='1DCNN_SISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
-    parser.add_argument('--overwrite', type=bool, default=True, help='Overwrite existing results')
-    # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
+    parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
     args = parser.parse_args()
 
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 500
-    n_trials = 1
+    n_trials = 100
 
     # ---- Get parameters
     model_type = args.model
