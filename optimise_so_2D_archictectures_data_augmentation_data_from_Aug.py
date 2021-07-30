@@ -204,12 +204,12 @@ if __name__ == "__main__":
 
     # ---- Define some paths to data
     if args.normalisation == 'norm':
-        #TODO: Franz, these file must be generated with preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm_v2.pickle'
+        #TODO: Franz, these file must be generated with preprocess_2d_inputs_v2_extract_1_year_aug_dek_1_july_dek3.py
+        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm_v3.pickle'
         hist_norm = 'norm'
     else:
-        # TODO: Franz, these file must be generated with preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw_v2.pickle'
+        # TODO: Franz, these file must be generated with preprocess_2d_inputs_v2_extract_1_year_aug_dek_1_july_dek3.py
+        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw_v3.pickle'
         hist_norm = 'raw'
     print("Input file: ", os.path.basename(str(fn_indata)))
 
@@ -263,7 +263,8 @@ if __name__ == "__main__":
                 pass
             else:
                 rm_tree(dir_tgt)
-                # TODO: Franz, this has changed from  Xt = Xt_full[:, :, 0:(month * 3), :] because data start in Sep using preprocess_2d_inputs_v2_extract_1_year_sep_dek_1_aug_dek3.py
+                # TODO: Franz, this has changed from  Xt = Xt_full[:, :, 0:(month * 3), :] because data start in Aug using preprocess_2d_inputs_v2_extract_1_year_aug_dek_1_july_dek3.py,
+                # as we said we start in Sep now
                 Xt = Xt_nozero[:, :, 3:(3 + month * 3), :]
                 print('------------------------------------------------')
                 print('------------------------------------------------')

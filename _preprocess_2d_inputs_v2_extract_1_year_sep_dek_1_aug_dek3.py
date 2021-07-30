@@ -1,4 +1,4 @@
-import dill as pickle
+import pickle
 import pandas as pd
 import numpy as np
 import random
@@ -99,13 +99,26 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
     df_raw = pd.read_csv(fn_features)
     df_raw = df_raw.rename(columns={"reg0_id": "ASAP1_ID"})
 
+    # MM; NDVI of year 2001 starts in 10 01 while we need 09 01 for dtata augumentation
+    # we mirror october into september
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011001)]
+    df_mirrored['dekad'] = 20010921
+    df_raw = df_raw.append(df_mirrored)
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011011)]
+    df_mirrored['dekad'] = 20010911
+    df_raw = df_raw.append(df_mirrored)
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011021)]
+    df_mirrored['dekad'] = 20010901
+    df_raw = df_raw.append(df_mirrored)
+
     hists = []
     # Histograms with 4 variables
     variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
-    sfig_dir = cst.my_project.figs_dir / '2D_inputs'
+    sfig_dir = cst.my_project.figs_dir / '2D_inputs_v2'
     sfig_dir.mkdir(parents=True, exist_ok=True)
     for i, row in df_statsw.iterrows():
         # Start of season is at year -1 !!!
+        # Error in ts start, DO NOT USE, OLD
         hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36,
                                 ts_start='1001', normalise=normalise)
         hists.append(hist)
@@ -135,8 +148,8 @@ if __name__ == "__main__":
     save_plot = True
     normalise = False
     if normalise:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm_v2.pickle'
     else:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw_v2.pickle'
     main(fn_features, fn_stats, fn_out, normalise, save_plot)
 

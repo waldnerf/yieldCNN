@@ -99,8 +99,9 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
     df_raw = pd.read_csv(fn_features)
     df_raw = df_raw.rename(columns={"reg0_id": "ASAP1_ID"})
 
-    # MM; NDVI of year 2001 starts in 10 01 while we need 09 01 for dtata augumentation
-    # we mirror october into september
+    # MM; NDVI of year 2001 starts in 10 01 while we need 08 01 for dtata augumentation
+    # we mirror october into september and november into august
+    # Sep:
     df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011001)]
     df_mirrored['dekad'] = 20010921
     df_raw = df_raw.append(df_mirrored)
@@ -109,24 +110,33 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
     df_raw = df_raw.append(df_mirrored)
     df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011021)]
     df_mirrored['dekad'] = 20010901
+    # Aug:
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011101)]
+    df_mirrored['dekad'] = 20010821
+    df_raw = df_raw.append(df_mirrored)
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011111)]
+    df_mirrored['dekad'] = 20010811
+    df_raw = df_raw.append(df_mirrored)
+    df_mirrored = df_raw[(df_raw['variable_name'] == 'NDVI') & (df_raw['dekad'] == 20011121)]
+    df_mirrored['dekad'] = 20010801
     df_raw = df_raw.append(df_mirrored)
 
     hists = []
     # Histograms with 4 variables
     variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
-    sfig_dir = cst.my_project.figs_dir / '2D_inputs'
+    sfig_dir = cst.my_project.figs_dir / '2D_inputs_from_August'
     sfig_dir.mkdir(parents=True, exist_ok=True)
     for i, row in df_statsw.iterrows():
         # Start of season is at year -1 !!!
         hist = get_2D_histogram(df_raw, unit=int(row['ASAP1_ID']), year=int(row['Year'])-1, ts_length=36,
-                                ts_start='1001', normalise=normalise)
+                                ts_start='0801', normalise=normalise)
         hists.append(hist)
 
         # Plot data for each province-year
         super_title = f'{row["AU_name"]} ({row["Year"]}) - barley {round(row["Yield_Barley"], 2)} t/ha, ' \
                       f'soft wheat {round(row["Yield_Softwheat"], 2)} t/ha, ' \
-                      f'durum wheat {round(row["Yield_Durumwheat"], 2)} t/ha'
-        fig_name = sfig_dir / f'{row["AU_name"]}_{row["Year"]}_2Dinputs.png'
+                      f'durum wheat {round(row["Yield_Durumwheat"], 2)} t/ha, x0=1st dek Aug'
+        fig_name = sfig_dir / f'{row["AU_name"]}_{row["Year"]}_2Dinputs_from_August.png'
         if save_plot:
             plot_2D_inputs_by_region(hist, variables, super_title, fig_name=fig_name)
             plt.close()
@@ -144,11 +154,11 @@ if __name__ == "__main__":
     rdata_dir = Path(cst.root_dir, 'raw_data')
     fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
-    save_plot = False
+    save_plot = True
     normalise = False
     if normalise:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm_v2.pickle'
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm_v3.pickle'
     else:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw_v2.pickle'
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw_v3.pickle'
     main(fn_features, fn_stats, fn_out, normalise, save_plot)
 
