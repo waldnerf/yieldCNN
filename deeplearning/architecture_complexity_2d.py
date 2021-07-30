@@ -14,7 +14,7 @@ from deeplearning.architecture_features import *
 import tensorflow.keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Flatten
-from tensorflow.keras.layers import GRU, Bidirectional, LSTM, GlobalMaxPooling2D, GlobalAveragePooling2D, MaxPooling2D
+from tensorflow.keras.layers import AveragePooling2D, GlobalMaxPooling2D, GlobalAveragePooling2D, MaxPooling2D
 from tensorflow.keras import backend as K
 
 
@@ -24,7 +24,7 @@ from tensorflow.keras import backend as K
 
 # -----------------------------------------------------------------------
 def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
-                     funits_fc=1, activation='sigmoid', v_fc=1, nbunits_v=10, verbose=True):
+                     nunits_fc=64, activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -45,25 +45,24 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
     Xt = Xt_input
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
                              kernel_regularizer=l2(l2_rate))
-    Xt = MaxPooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt)
+    Xt = AveragePooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt)
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
                              kernel_regularizer=l2(l2_rate))
-    Xt = GlobalMaxPooling2D(data_format='channels_last')(Xt)
+    Xt = GlobalAveragePooling2D(data_format='channels_last')(Xt)
 
     # -- Flatten
     Xt = Flatten()(Xt)
 
     # -- Vector inputs
     Xv = Xv_input
-    if v_fc == 1:
-        Xv = Dense(nbunits_v, activation=activation)(Xv)
+    Xv = Dense(nbunits_conv, activation=activation)(Xv)  # n units = n conv channels for balance
 
     # -- Concatenate
     X = layers.Concatenate()([Xt, Xv])
 
     # -- Output FC layers
     for add in range(nb_fc - 1):
-        X = Dense(nbunits_conv * funits_fc, activation=activation)(X)
+        X = Dense(nunits_fc//(2^add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
 
     out1 = Dense(1, activation='relu', name='out1')(X)
@@ -77,7 +76,7 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
 
 # -----------------------------------------------------------------------
 def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
-                     funits_fc=1, activation='sigmoid', verbose=True):
+                     nunits_fc=1, activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -94,17 +93,17 @@ def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
     Xt = Xt_input
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
                              kernel_regularizer=l2(l2_rate)) ##MM: returns nbunits_conv channels
-    Xt = MaxPooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt) ##MM: does not alter n of channels
+    Xt = AveragePooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt) ##MM: does not alter n of channels
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
                              kernel_regularizer=l2(l2_rate)) #MM: keeps the same number of channels
-    Xt = GlobalMaxPooling2D(data_format='channels_last')(Xt)    #MM operate in space, so I get only one value per channel (nbunits_conv)
+    Xt = AveragePooling2D(data_format='channels_last')(Xt)    #MM operate in space, so I get only one value per channel (nbunits_conv)
 
     # -- Flatten
     X = Flatten()(Xt)
 
     # -- Output FC layers
     for add in range(nb_fc - 1):
-        X = Dense(nbunits_conv * funits_fc, activation=activation)(X)
+        X = Dense(nunits_fc//(2^add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
 
     out1 = Dense(1, activation='relu', name='out1')(X)

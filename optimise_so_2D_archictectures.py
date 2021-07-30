@@ -7,6 +7,7 @@ import shutil
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 import optuna
+from optuna.samplers import TPESampler
 import joblib
 import random
 import wandb
@@ -30,14 +31,14 @@ import mysrc.constants as cst
 
 def objective_2DCNN(trial):
     # Suggest values of the hyperparameters using a trial object.
-    nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
-    kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
-    strides_ = trial.suggest_int('strides', 2, 5)
-    pool_size_ = trial.suggest_int('pool_size', 1, 5)
-    dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.05)
-    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2])
-    funits_fc_ = trial.suggest_categorical('funits_fc', [1, 2, 3])
-    activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
+    nbunits_conv_ = trial.suggest_int('nbunits_conv', 16, 64, step=4)
+    kernel_size_ = trial.suggest_int('kernel_size', 3, 6)
+    strides_ = trial.suggest_int('strides', 1, 6) # MAKE IT POOL SIZE x
+    pool_size_ = trial.suggest_int('pool_size', 1, 6) # POOL SIZE Y, and let strides = pool size (//2 on time axis)
+    dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.1)
+    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
+    nunits_fc_ = trial.suggest_int('funits_fc', 16, 128, step=4)
+    #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     if model_type == '2DCNN_SISO':
         model = Archi_2DCNN_SISO(Xt,
@@ -47,13 +48,11 @@ def objective_2DCNN(trial):
                                  pool_size=pool_size_,
                                  dropout_rate=dropout_rate_,
                                  nb_fc=nb_fc_,
-                                 funits_fc=funits_fc_,
-                                 activation=activation_,
+                                 nunits_fc=nunits_fc_,
+                                 activation='sigmoid',
                                  verbose=False)
 
     elif model_type == '2DCNN_MISO':
-        v_fc_ = trial.suggest_categorical('v_fc', [0, 1])
-        nbunits_v_ = trial.suggest_int('nbunits_v', 10, 25, step=5)
         model = Archi_2DCNN_MISO(Xt,
                                  region_ohe,
                                  nbunits_conv=nbunits_conv_,
@@ -61,11 +60,9 @@ def objective_2DCNN(trial):
                                  strides=strides_,
                                  pool_size=pool_size_,
                                  dropout_rate=dropout_rate_,
-                                 v_fc=v_fc_,
-                                 nbunits_v=nbunits_v_,
                                  nb_fc=nb_fc_,
-                                 funits_fc=funits_fc_,
-                                 activation=activation_,
+                                 nunits_fc=nunits_fc_,
+                                 activation='sigmoid',
                                  verbose=False)
 
     # Define output filenames
@@ -179,8 +176,8 @@ if __name__ == "__main__":
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
-    batch_size = 500
-    n_trials = 100
+    batch_size = 128
+    n_trials = 1
 
     # ---- Get parameters
     model_type = args.model
@@ -223,6 +220,7 @@ if __name__ == "__main__":
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
 
+    trial_history = []
     # loop through all crops
     for crop_n in range(y.shape[1]):
         dir_crop = dir_res / f'crop_{crop_n}'
@@ -236,15 +234,24 @@ if __name__ == "__main__":
                 pass
             else:
                 rm_tree(dir_tgt)
-                Xt = Xt_full[:, :, 0:(month * 3), :]
+                Xt = Xt_full[:, :, 0:(month * 3), :].copy()
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
                 print(f'=> noarchi: {model_type} - normalisation: {hist_norm} - target:'
                       f' {target_var} - crop: {crop_n} - month: {month} =')
+                print(f'Training data have shape: {Xt.shape}')
                 study = optuna.create_study(direction='maximize',
+                                            sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
+                print(best_previous_trial)
+                # Force the sample to sample at previously best model configuration
+                if len(trial_history) > 0:
+
+                    for best_previous_trial in trial_history:
+                        study.enqueue_trial(best_previous_trial) #TODO CHECK!
+
                 study.optimize(objective_2DCNN, n_trials=n_trials)
 
                 trial = study.best_trial
@@ -257,6 +264,7 @@ if __name__ == "__main__":
                 print("Params: ")
                 for key, value in trial.params.items():
                     print("{}: {}".format(key, value))
+                trial_history.append(trial.params.items()) # TODO: check that it is a list of dictionnaries
 
                 joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
                 # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))

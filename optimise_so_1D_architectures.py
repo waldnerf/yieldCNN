@@ -7,6 +7,7 @@ import shutil
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 import optuna
+from optuna.samplers import TPESampler
 import joblib
 import random
 import wandb
@@ -35,9 +36,9 @@ def objective_1DCNN(trial):
     strides_ = trial.suggest_int('strides', 2, 5)
     pool_size_ = trial.suggest_int('pool_size', 1, 5)
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.05)
-    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2])
-    funits_fc_ = trial.suggest_categorical('funits_fc', [1, 2, 3])
-    activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
+    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
+    nunits_fc_ = trial.suggest_categorical('funits_fc', [16, 32, 64, 128])
+    #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     if model_type == '1DCNN_SISO':
         Xt_ = reshape_data(Xt, n_channels)
@@ -48,13 +49,11 @@ def objective_1DCNN(trial):
                                  pool_size=pool_size_,
                                  dropout_rate=dropout_rate_,
                                  nb_fc=nb_fc_,
-                                 funits_fc=funits_fc_,
-                                 activation=activation_,
+                                 nunits_fc=nunits_fc_,
+                                 activation='sigmoid',
                                  verbose=False)
 
     elif model_type == '1DCNN_MISO':
-        v_fc_ = trial.suggest_categorical('v_fc', [0, 1])
-        nbunits_v_ = trial.suggest_int('nbunits_v', 10, 25, step=5)
         Xt_ = reshape_data(Xt, n_channels)
         model = Archi_1DCNN_MISO(Xt_,
                                  region_ohe,
@@ -63,11 +62,9 @@ def objective_1DCNN(trial):
                                  strides=strides_,
                                  pool_size=pool_size_,
                                  dropout_rate=dropout_rate_,
-                                 v_fc=v_fc_,
-                                 nbunits_v=nbunits_v_,
                                  nb_fc=nb_fc_,
-                                 funits_fc=funits_fc_,
-                                 activation=activation_,
+                                 nunits_fc=nunits_fc_,
+                                 activation='sigmoid',
                                  verbose=False)
 
     # Define output filenames
@@ -178,7 +175,7 @@ if __name__ == "__main__":
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
-    batch_size = 500
+    batch_size = 128
     n_trials = 100
 
     # ---- Get parameters
@@ -234,6 +231,7 @@ if __name__ == "__main__":
                 print(f'=> noarchi: {model_type}'
                       f' {target_var} - crop: {crop_n} - month: {month} =')
                 study = optuna.create_study(direction='maximize',
+                                            sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
                 study.optimize(objective_1DCNN, n_trials=n_trials)

@@ -63,8 +63,8 @@ def Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
 
 
 # -----------------------------------------------------------------------
-def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
-                    activation='sigmoid', v_fc=1, nbunits_v=10, verbose=True):
+def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, nunits_fc=1,
+                    activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -95,15 +95,14 @@ def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
 
     # -- Vector inputs
     Xv = Xv_input
-    if v_fc == 1:
-        Xv = Dense(nbunits_v, activation=activation)(Xv)
+    Xv = Dense(nbunits_conv, activation=activation)(Xv)  # n units = n conv channels for balance
 
     # -- Concatenate
     X = layers.Concatenate()([Xt, Xv])
 
     # -- Output FC layers
     for add in range(nb_fc - 1):
-        X = Dense(nbunits_conv * funits_fc, activation=activation)(X)
+        X = Dense(nunits_fc//(2^add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
     out1 = Dense(1, activation='relu', name='out1')(X)
 
