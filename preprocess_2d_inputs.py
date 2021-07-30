@@ -1,4 +1,4 @@
-import pickle
+import dill as pickle
 import pandas as pd
 import numpy as np
 import random
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
     save_plot = False
-    normalise = False
+    normalise = True
     if normalise:
         fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
     else:
