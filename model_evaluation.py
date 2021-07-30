@@ -39,7 +39,7 @@ def model_evaluation(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn
     target_var = 'area' if 'area' in model_name else 'yield'
 
     crop_list = ['Barley', 'Durum wheat', 'Soft wheat']
-    crop_name = crop_list[crop_id]
+    crop_name = crop_list[crop_ID]
 
     # store results in dictionary
     outdict = {'runID': fn_in.name,
