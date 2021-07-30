@@ -11,7 +11,7 @@ from PIL import Image, ImageOps
 import keras
 from keras.models import Model, load_model
 
-from sits.readingsits import *
+from sits.readingsits1D import *
 from outputfiles.save import *
 from deeplearning.architecture_features import *
 

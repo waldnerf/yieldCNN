@@ -36,6 +36,10 @@ def model_evaluation(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn
     mCountryRes = mRes.groupby('Year')[['yLoo_pred', 'yLoo_true', 'Production']].apply(weighed_average).drop(
         ['Production'], axis=1)
     error_Country_level = ev.allStats_country(mCountryRes)
+    target_var = 'area' if 'area' in model_name else 'yield'
+
+    crop_list = ['Barley', 'Durum wheat', 'Soft wheat']
+    crop_name = crop_list[crop_id]
 
     # store results in dictionary
     outdict = {'runID': fn_in.name,
@@ -48,7 +52,7 @@ def model_evaluation(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn
                'nJobsForGridSearchCv': '',
                'Time': '',
                'Time_sampling': 'M',
-               'forecast_time': forecast_time,
+               'lead_time': forecast_time,
                'N_features': '',
                'N_OHE': '',
                'Features': '',
@@ -56,8 +60,8 @@ def model_evaluation(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn
                'N_selected_fit': '',
                'Prct_selected_fit': '',
                'Selected_features_names_fit': '',
-               'targetVar': 'Yield',
-               'Crop':crop_ID+1,
+               'targetVar': target_var,
+               'Crop':crop_name,
                'Estimator': model_name,
                'Optimisation': '',
                'R2_f': '',  #TODO
@@ -88,29 +92,27 @@ def model_evaluation(fn_in, crop_ID, forecast_time, model_name, fn_asapID2AU, fn
 
 if __name__ == "__main__":
     try:
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset.pickle'
         dir_out = cst.my_project.params_dir
         fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
         fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
-        model_name = 'Archi+2DCNNw_MISO'
         out = []
-        for crop_id in range(0, 3):
-            for forecast_time in range(2, 9):
-                dir_fn = dir_out / f'{model_name}/crop_{crop_id}/month_{forecast_time}/best_model'
-                fn = [x for x in dir_fn.glob('*.csv')][0]
-                res_i = model_evaluation(fn, crop_id, forecast_time, model_name, fn_asapID2AU, fn_stats90)
-                out.append(res_i)
-
+        input_data = '1D'
+        for model_name in dir_out.glob(f'*{input_data}*'):
+            model_name = model_name.parts[-1]
+            print(model_name)
+            for crop_id in range(0, 3):
+                for forecast_time in range(2, 9):
+                    dir_fn = dir_out / f'{model_name}/crop_{crop_id}/month_{forecast_time}/best_model'
+                    fns = [x for x in dir_fn.glob('*.csv')]
+                    if len(fns) > 0:
+                        res_i = model_evaluation(fns[0], crop_id, forecast_time, model_name, fn_asapID2AU, fn_stats90)
+                        out.append(res_i)
+                    if len(fns)>1:
+                        print(dir_fn)
         df_out = pd.concat(out)
-        df_out.to_csv(cst.root_dir / "data/full_model_evaluation.csv", index=False)
+        df_out.to_csv(cst.root_dir / f"data/model_evaluation_{input_data}CNN.csv", index=False)
 
         print("0")
     except RuntimeError:
         print >> sys.stderr
         sys.exit(1)
-
-
-# res = mRes2output(r'X:\PY_data\Histograms\example output file\archi-2DCNNw_MISO_res_68_test_35_5_2_1_0_0_2_2_2_sigmoid.csv',
-#                   r'X:\PY_data\ML1_data_input\CountryStats\Algeria_REGION_id.csv',
-#                   r'X:\PY_data\ML1_data_output\Algeria\Algeria_stats90.pkl',
-#                   1)

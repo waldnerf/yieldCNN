@@ -8,11 +8,11 @@ import shutil
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-from deeplearning.architecture_complexity import *
+from deeplearning.architecture_complexity_1d import *
 from outputfiles.plot import *
 from outputfiles.save import *
 from outputfiles.evaluation import *
-from sits.readingsits import *
+from sits.readingsits1D import *
 import mysrc.constants as cst
 
 

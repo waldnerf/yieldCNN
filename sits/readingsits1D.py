@@ -76,10 +76,8 @@ def add_one_hot(regions):
     return new_X
 
 
-def subset_data(Xt, Xv, region_ohe, y, subset_bool):
-    return Xt[subset_bool, :], Xv[subset_bool, :], region_ohe[subset_bool, :], y[subset_bool]
-
-
+def subset_data(Xt, region_ohe, y, subset_bool):
+    return Xt[subset_bool, :], region_ohe[subset_bool, :], y[subset_bool]
 
 # -----------------------------------------------------------------------
 def reshape_data(X, nchannels):
@@ -93,18 +91,11 @@ def reshape_data(X, nchannels):
     """
     return X.reshape(X.shape[0], int(X.shape[1] / nchannels), nchannels, order='F')
 
-
-
 # -----------------------------------------------------------------------
-def computingMinMax(Xt, Xv, y, per=2):
-    min_per_t = np.percentile(Xt, per, axis=(0, 1))
-    max_per_t = np.percentile(Xt, 100 - per, axis=(0, 1))
-    min_per_v = np.percentile(Xv, per, axis=0)
-    max_per_v = np.percentile(Xv, 100 - per, axis=0)
-    min_per_y = np.percentile(y, per, axis=0)
-    max_per_y = np.percentile(y, 100 - per, axis=0)
-    return min_per_t, max_per_t, min_per_v, max_per_v, min_per_y, max_per_y
-
+def computingMinMax(x, per=2):
+    min_per = np.percentile(x, per, axis=(0, 1))
+    max_per = np.percentile(x, 100 - per, axis=(0, 1))
+    return min_per, max_per
 
 # -----------------------------------------------------------------------
 def read_minMaxVal(minmax_file):

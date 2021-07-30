@@ -20,28 +20,29 @@ random.seed(4)
 # import tensorflow.python.util.deprecation as deprecation
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
-from deeplearning.architecture_complexity_2d import *
+from deeplearning.architecture_complexity_1d import *
 from outputfiles.plot import *
 from outputfiles.save import *
 from model_evaluation import *
 from outputfiles.evaluation import *
-from sits.readingsits2D import *
+from sits.readingsits1D import *
 import mysrc.constants as cst
 
 
-def objective_2DCNN(trial):
+def objective_1DCNN(trial):
     # Suggest values of the hyperparameters using a trial object.
-    nbunits_conv_ = trial.suggest_int('nbunits_conv', 16, 64, step=4)
-    kernel_size_ = trial.suggest_int('kernel_size', 3, 6)
-    strides_ = trial.suggest_int('strides', 1, 6) # MAKE IT POOL SIZE x
-    pool_size_ = trial.suggest_int('pool_size', 1, 6) # POOL SIZE Y, and let strides = pool size (//2 on time axis)
-    dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.1)
+    nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
+    kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
+    strides_ = trial.suggest_int('strides', 2, 5)
+    pool_size_ = trial.suggest_int('pool_size', 1, 5)
+    dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.05)
     nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
-    nunits_fc_ = trial.suggest_int('funits_fc', 16, 128, step=4)
+    nunits_fc_ = trial.suggest_categorical('funits_fc', [16, 32, 64, 128])
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
-    if model_type == '2DCNN_SISO':
-        model = Archi_2DCNN_SISO(Xt,
+    if model_type == '1DCNN_SISO':
+        Xt_ = reshape_data(Xt, n_channels)
+        model = Archi_1DCNN_SISO(Xt_,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
                                  strides=strides_,
@@ -52,8 +53,9 @@ def objective_2DCNN(trial):
                                  activation='sigmoid',
                                  verbose=False)
 
-    elif model_type == '2DCNN_MISO':
-        model = Archi_2DCNN_MISO(Xt,
+    elif model_type == '1DCNN_MISO':
+        Xt_ = reshape_data(Xt, n_channels)
+        model = Archi_1DCNN_MISO(Xt_,
                                  region_ohe,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
@@ -82,15 +84,15 @@ def objective_2DCNN(trial):
         Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
-        # If images are already normalised per region, the following has no effect
-        # if not this is a minmax scaling based on the training set.
-        min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
-        # Normalise training set
+        # ---- Reshaping data necessary
+        Xt_train = reshape_data(Xt_train, n_channels)
+        Xt_val = reshape_data(Xt_val, n_channels)
+        Xt_test = reshape_data(Xt_test, n_channels)
+
+        # ---- Normalizing the data per band
+        min_per_t, max_per_t = computingMinMax(Xt_train, per=2)
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
-        # print(f'Shape training data: {Xt_train.shape}')
-        # Normalise validation set
         Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
-        # Normalise test set
         Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
 
         # Normalise ys
@@ -100,12 +102,12 @@ def objective_2DCNN(trial):
         ys_test = transformer_y.transform(y_test[:, [crop_n]])
 
         # We compile our model with a sampled learning rate.
-        if model_type == '2DCNN_SISO':
+        if model_type == '1DCNN_SISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                           {'ts_input': Xt_val}, ys_val,
                                           out_model_file, n_epochs=n_epochs, batch_size=batch_size)
             X_test = {'ts_input': Xt_test}
-        elif model_type == '2DCNN_MISO':
+        elif model_type == '1DCNN_MISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train, 'v_input': Xv_train}, ys_train,
                                           {'ts_input': Xt_val, 'v_input': Xv_val}, ys_val,
                                           out_model_file, n_epochs=n_epochs, batch_size=batch_size)
@@ -163,35 +165,26 @@ def objective_2DCNN(trial):
 # -----------------------------------------------------------------------
 if __name__ == "__main__":
     # ---- Define parser
-    parser = argparse.ArgumentParser(description='Optimise 2D CNN for yield and area forecasting')
-    parser.add_argument('--normalisation', type=str, default='norm', choices=['norm', 'raw'], help='Should input data be normalised histograms?')
-    parser.add_argument('--model', type=str, default='2DCNN_SISO',
+    parser = argparse.ArgumentParser(description='Optimise 1D CNN for yield and area forecasting')
+    parser.add_argument('--model', type=str, default='1DCNN_MISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
-    parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
     parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
     parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
-    # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
 
     # ---- Parameters to set
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 128
-    n_trials = 1
+    n_trials = 100
 
     # ---- Get parameters
     model_type = args.model
-    target_var = args.target
     wandb_log = args.wandb
     overwrite = args.overwrite
 
     # ---- Define some paths to data
-    if args.normalisation == 'norm':
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
-        hist_norm = 'norm'
-    else:
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
-        hist_norm = 'raw'
+    fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_dataset.csv')
     print("Input file: ", os.path.basename(str(fn_indata)))
 
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
@@ -200,27 +193,22 @@ if __name__ == "__main__":
     # ---- output files
     dir_out = cst.my_project.params_dir
     dir_out.mkdir(parents=True, exist_ok=True)
-    dir_res = dir_out / f'Archi_{str(model_type)}_{target_var}_{hist_norm}'
+    dir_res = dir_out / f'Archi_{str(model_type)}'
     dir_res.mkdir(parents=True, exist_ok=True)
-    out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
+    out_model = f'archi-{model_type}.h5'
 
     # ---- Downloading
     Xt_full, area, region_id, groups, yld = data_reader(fn_indata)
     
     # ---- Format target variable
-    if target_var == 'yield':
-        y = yld
-        xlabels = 'Predictions (t/ha)'
-        ylabels = 'Observations (t/ha)'
-    elif target_var == 'area':
-        y = area
-        xlabels = 'Predictions (%)'
-        ylabels = 'Observations (%)'
+    target_var = 'yield'
+    y = yld
+    xlabels = 'Predictions (t/ha)'
+    ylabels = 'Observations (t/ha)'
 
     # ---- Convert region to one hot
     region_ohe = add_one_hot(region_id)
 
-    trial_history = []
     # loop through all crops
     for crop_n in range(y.shape[1]):
         dir_crop = dir_res / f'crop_{crop_n}'
@@ -234,25 +222,19 @@ if __name__ == "__main__":
                 pass
             else:
                 rm_tree(dir_tgt)
-                Xt = Xt_full[:, :, 0:(month * 3), :].copy()
+                indices = list(range(0, Xt_full.shape[1] // n_channels))
+                msel = [True if x < (month * 3) else False for x in indices] * n_channels
+                Xt = Xt_full[:, msel]
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
-                print(f'=> noarchi: {model_type} - normalisation: {hist_norm} - target:'
+                print(f'=> noarchi: {model_type}'
                       f' {target_var} - crop: {crop_n} - month: {month} =')
-                print(f'Training data have shape: {Xt.shape}')
                 study = optuna.create_study(direction='maximize',
                                             sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
-                print(best_previous_trial)
-                # Force the sample to sample at previously best model configuration
-                if len(trial_history) > 0:
-
-                    for best_previous_trial in trial_history:
-                        study.enqueue_trial(best_previous_trial) #TODO CHECK!
-
-                study.optimize(objective_2DCNN, n_trials=n_trials)
+                study.optimize(objective_1DCNN, n_trials=n_trials)
 
                 trial = study.best_trial
                 print('------------------------------------------------')
@@ -264,7 +246,6 @@ if __name__ == "__main__":
                 print("Params: ")
                 for key, value in trial.params.items():
                     print("{}: {}".format(key, value))
-                trial_history.append(trial.params.items()) # TODO: check that it is a list of dictionnaries
 
                 joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
                 # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
@@ -280,14 +261,13 @@ if __name__ == "__main__":
                     # 1. Start a W&B run
                     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
                                group=f'{target_var} - {crop_n} - {month}', config=trial.params,
-                               name=f'{target_var}-{model_type}-{crop_n}-{month}-{hist_norm}',
+                               name=f'{target_var}-{model_type}-{crop_n}-{month}',
                                notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
                                      f'crop ID {crop_n}.')
                     # 2. Save model inputs and hyperparameters
                     wandb.config.update({'model_type': model_type,
                                          'crop_n': crop_n,
                                          'month': month,
-                                         'norm': hist_norm,
                                          'target': target_var,
                                          'n_epochs': n_epochs,
                                          'batch_size': batch_size,

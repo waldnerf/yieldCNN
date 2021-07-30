@@ -22,6 +22,7 @@ You can monitor GPU usage with the following command:
 
 ## To do
 -  [ ] merge preprocessing
+-  [ ] explore asymmetric pooling strides
 -  [ ] normalisation per province 
 Normalization 
 (2021-07-27) Two options now:  

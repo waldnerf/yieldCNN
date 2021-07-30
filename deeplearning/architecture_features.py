@@ -15,7 +15,7 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, Dropout, Flatten, Lambda, SpatialDropout1D, \
     Concatenate
 from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, GlobalAveragePooling1D
-from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, EarlyStopping
+from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras import backend as K
 
@@ -179,7 +179,11 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
     # ---- monitoring the minimum validation loss
     checkpoint = ModelCheckpoint(out_model_file, monitor='val_loss',
                                  verbose=0, save_best_only=True, mode='min')
-    callback_list = [checkpoint]
+
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
+                                  patience=5, min_lr=0.00001)
+
+    callback_list = [checkpoint, reduce_lr]
     model.compile(optimizer=opt,
                   loss={'out1': 'mse'},
                   loss_weights={'out1': 1.},
