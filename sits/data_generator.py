@@ -51,7 +51,7 @@ class DG(object):
         self.y_augmented = self.y[subset_bool,:]
 
         if self.Xshift == True:
-            # 1 - shift left (no matter if we leav the last deks unchanged, they will not be used)
+            # 1 - shift left (no matter if we leave the last deks unchanged, they will not be used)
             self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, -1, axis=2)), axis=0)
             self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, -2, axis=2)), axis=0)
             # 2 - shift right

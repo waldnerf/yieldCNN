@@ -255,17 +255,17 @@ if __name__ == "__main__":
         dir_crop = dir_res / f'crop_{crop_n}'
         dir_crop.mkdir(parents=True, exist_ok=True)
         # loop by month
-        for month in range(2, 9):
+        # TODO: Franz, new range
+        for month in range(1, 9): #first month in data is August (for data aug), we need from sep, so index 3 is start
             dir_tgt = dir_crop / f'month_{month}'
             dir_tgt.mkdir(parents=True, exist_ok=True)
-
             if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
                 pass
             else:
                 rm_tree(dir_tgt)
                 # TODO: Franz, this has changed from  Xt = Xt_full[:, :, 0:(month * 3), :] because data start in Aug using preprocess_2d_inputs_v2_extract_1_year_aug_dek_1_july_dek3.py,
-                # as we said we start in Sep now
-                Xt = Xt_nozero[:, :, 3:(3 + month * 3), :]
+                # as we said we start in Sep now so first forecast (month 1) is using up to end of Nov
+                Xt = Xt_nozero[:, :, 3:(3 + (2 + month) * 3), :]
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
