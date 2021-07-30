@@ -105,11 +105,12 @@ def plotHisto(fn, unit, var):
 def plot_2D_inputs_by_region(hist, variables, title, fig_name=None, _figsize=(16.5, 5)):
 
     fig, axs = plt.subplots(1, 4, figsize=_figsize)
-    cmaps = ['Greens', 'Blues', 'Purples', 'Reds']
+    cmaps = ['Greens',  'Purples', 'Blues', 'Reds']
     for col in range(len(cmaps)):
         ax = axs[col]
         plt.sca(ax)
         pcm = ax.imshow(np.flipud(hist[:, :, col]), cmap=cmaps[col])
+        ax.set_title(variables[col])
         fig.colorbar(pcm, ax=ax)
         #plt.plot([3, 3], [0, 64], color='black')
         #plt.plot([3 + 9 * 3, 3 + 9 * 3], [0, 64], color='black')
