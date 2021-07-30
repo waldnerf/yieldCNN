@@ -30,12 +30,12 @@ nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN
 # Option 6: Norm by province, no OHE, Area
 #nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN_SISO --target area & process_id=$!
 # Option 7: Not norm by province, OHE, Area
-#nohup python optimise_so_2D_archictectures.py --normalisation raw --model   --target area & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation raw --model 2DCNN_MISO  --target area & process_id=$!
 # Option 8: Not norm by province, no OHE, Area
 #nohup python optimise_so_2D_archictectures.py --normalisation raw --model 2DCNN_SISO --target area & process_id=$!
 
-#echo "PID: $process_id"
-#wait $process_id
+echo "PID: $process_id"
+wait $process_id
 #echo "Exit status: $?"
 
 echo Syncing on S3
