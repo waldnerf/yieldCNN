@@ -203,7 +203,7 @@ if __name__ == "__main__":
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
     fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
 
-    for input_size in [32, 64]:
+    for input_size in [64, 32]:
         # ---- output files
         dir_out = cst.my_project.params_dir
         dir_out.mkdir(parents=True, exist_ok=True)
@@ -265,7 +265,7 @@ if __name__ == "__main__":
 
                     study = optuna.create_study(direction='maximize',
                                                 sampler=TPESampler(),
-                                                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
+                                                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
                                                 )
 
                     # Force the sample to sample at previously best model configuration
