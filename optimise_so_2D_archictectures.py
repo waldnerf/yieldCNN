@@ -32,10 +32,12 @@ import mysrc.constants as cst
 
 def objective_2DCNN(trial):
     # Suggest values of the hyperparameters using a trial object.
-    nbunits_conv_ = trial.suggest_int('nbunits_conv', 16, 48, step=4)
+    nbunits_conv_ = trial.suggest_int('nbunits_conv', 8, 48, step=4)
     kernel_size_ = trial.suggest_int('kernel_size', 3, 6)
     strides_ = trial.suggest_int('strides', 1, 6) # MAKE IT POOL SIZE x
     pool_size_ = trial.suggest_int('pool_size', 1, 6) # POOL SIZE Y, and let strides = pool size (//2 on time axis)
+    pyramid_bins_ = trial.suggest_int('pyramid_bin', 1, 4)
+    pyramid_bins_ = [k for k in np.arange(1, pyramid_bins_+1)]
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.1)
     nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
     nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8)
@@ -47,6 +49,7 @@ def objective_2DCNN(trial):
                                  kernel_size=kernel_size_,
                                  strides=strides_,
                                  pool_size=pool_size_,
+                                 pyramid_bins=pyramid_bins_,
                                  dropout_rate=dropout_rate_,
                                  nb_fc=nb_fc_,
                                  nunits_fc=nunits_fc_,
@@ -60,6 +63,7 @@ def objective_2DCNN(trial):
                                  kernel_size=kernel_size_,
                                  strides=strides_,
                                  pool_size=pool_size_,
+                                 pyramid_bins=pyramid_bins_,
                                  dropout_rate=dropout_rate_,
                                  nb_fc=nb_fc_,
                                  nunits_fc=nunits_fc_,

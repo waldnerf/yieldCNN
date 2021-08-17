@@ -15,6 +15,7 @@ import tensorflow.keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import AveragePooling2D, GlobalMaxPooling2D, GlobalAveragePooling2D, MaxPooling2D
+from tensorflow_addons.layers import SpatialPyramidPooling2D
 from tensorflow.keras import backend as K
 
 
@@ -23,8 +24,8 @@ from tensorflow.keras import backend as K
 # ------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------
-def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
-                     nunits_fc=64, activation='sigmoid', verbose=True):
+def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, pyramid_bins=[1], dropout_rate=0.,
+                     nb_fc=1, nunits_fc=64, activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -48,14 +49,15 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
     Xt = AveragePooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt)
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
                              kernel_regularizer=l2(l2_rate))
-    Xt = GlobalAveragePooling2D(data_format='channels_last')(Xt)
+    #Xt = GlobalAveragePooling2D(data_format='channels_last')(Xt)
+    Xt = SpatialPyramidPooling2D(pyramid_bins, data_format='channels_last')(Xt)
 
     # -- Flatten
     Xt = Flatten()(Xt)
 
     # -- Vector inputs
     Xv = Xv_input
-    Xv = Dense(nbunits_conv, activation=activation)(Xv)  # n units = n conv channels for balance
+    Xv = Dense(nbunits_conv, activation=activation)(Xv)  # n units = n conv channels to add some balance among channels
 
     # -- Concatenate
     X = layers.Concatenate()([Xt, Xv])
@@ -75,8 +77,8 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
 
 
 # -----------------------------------------------------------------------
-def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
-                     nunits_fc=1, activation='sigmoid', verbose=True):
+def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, pyramid_bins=[1], dropout_rate=0.,
+                     nb_fc=1, nunits_fc=1, activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -96,7 +98,8 @@ def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
     Xt = AveragePooling2D(pool_size=pool_size, strides=strides, padding='valid')(Xt) ##MM: does not alter n of channels
     Xt = conv2d_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, dropout_rate=dropout_rate,
                              kernel_regularizer=l2(l2_rate)) #MM: keeps the same number of channels
-    Xt = AveragePooling2D(data_format='channels_last')(Xt)    #MM operate in space, so I get only one value per channel (nbunits_conv)
+    #Xt = GlobalAveragePooling2D(data_format='channels_last')(Xt)    #MM operate in space, so I get only one value per channel (nbunits_conv)
+    Xt = SpatialPyramidPooling2D(pyramid_bins, data_format='channels_last')(Xt)
 
     # -- Flatten
     X = Flatten()(Xt)
