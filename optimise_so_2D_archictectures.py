@@ -37,7 +37,7 @@ def objective_2DCNN(trial):
     strides_ = trial.suggest_int('strides', 1, 6) # MAKE IT POOL SIZE x
     pool_size_ = trial.suggest_int('pool_size', 1, 6) # POOL SIZE Y, and let strides = pool size (//2 on time axis)
     pyramid_bins_ = trial.suggest_int('pyramid_bin', 1, 4)
-    pyramid_bins_ = [k for k in np.arange(1, pyramid_bins_+1)]
+    pyramid_bins_ = [[k,k] for k in np.arange(1, pyramid_bins_+1)]
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.1)
     nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
     nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8)
