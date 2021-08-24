@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """ 
-	Defining tensorflow.keras architecture, and training the models
+Defining tensorflow.keras architecture, and training the models
 """
 
 import sys, os
@@ -12,13 +12,14 @@ import tensorflow.keras
 from tensorflow.keras import layers
 from tensorflow.keras import optimizers
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, Dropout, Flatten, Lambda, SpatialDropout1D, \
+from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, Dropout, Flatten, Lambda, \
+    SpatialDropout1D, \
     Concatenate
-from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, GlobalAveragePooling1D
+from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, \
+    GlobalAveragePooling1D
 from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras import backend as K
-
 
 
 # -----------------------------------------------------------------------
@@ -143,6 +144,7 @@ def flipout_conv2d_bn_relu_drop(X, **conv_params):
     A = flipout_conv2d_bn_relu(X, **conv_params)
     return Dropout(dropout_rate)(A)
 
+
 # -----------------------------------------------------------------------
 # ---------------------- Training models
 # -----------------------------------------------------------------------
@@ -200,6 +202,7 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
     model = load_model(out_model_file)
     pred = model.predict(x=X_val)
     return model, pred
+
 
 def trainTestModel(model, Xt_train, y_train, X_test, Y_test_onehot, out_model_file, **train_params):
     # ---- variables
@@ -286,6 +289,7 @@ def cv_Model_SISO(model, Xt_train, ys_train, Xt_val, ys_val, out_model_file, **t
     pred = model.predict(x={'ts_input': Xt_val})
     return model, pred
 
+
 # -----------------------------------------------------------------------
 def cv_Model_MIMO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, out_model_file, **train_params):
     # ---- variables
@@ -357,6 +361,7 @@ def cv_Model_MISO(model, Xt_train, Xv_train, ys_train, Xt_val, Xv_val, ys_val, o
     model = load_model(out_model_file)
     pred = model.predict(x={'ts_input': Xt_val, 'v_input': Xv_val})
     return model, pred
+
 
 # -----------------------------------------------------------------------
 def trainValTestModel_SISO(model, Xt_train, ys_train, Xt_val, ys_val,

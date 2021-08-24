@@ -1,3 +1,7 @@
+"""
+Convert tabular data into arrays usable by a 1D CNN.
+"""
+
 import pickle
 import pandas as pd
 import numpy as np
@@ -14,6 +18,9 @@ from pathlib import Path
 
 
 def get_season(date_, start_month, sep='-'):
+    """
+    Get season span from date
+    """
     date_ = str(date_)
     date_s = date_.split(sep)
     if int(date_s[1]) < start_month:
@@ -24,6 +31,9 @@ def get_season(date_, start_month, sep='-'):
 
 
 def retain_regions(df, groups, key, target, cum=0.9):
+    """
+    Select ranked regions by decreasing order making up to 90% of the cumulative production
+    """
     my_list = []
 
     for i in df[groups].unique():
@@ -37,6 +47,28 @@ def retain_regions(df, groups, key, target, cum=0.9):
     return list(set(my_list))
 
 def main(fn_features, fn_stats,  step_dic, month_sos, fn_out=''):
+    """
+    Convert tabular data into arrays usable by a 1D CNN.
+
+    Parameters
+    ----------
+    fn_features : str
+        The file location of the input spreadsheet containing the satellite and climate data.
+    fn_stats : str
+        The file location of the spreadsheet containing the official statistics.
+    step_dic : dict
+        Dictionary linking dates and forecast steps.
+    month_sos : str
+        Index of the start of season
+    fn_features : str, optional
+        The location of the output file.
+
+
+    Returns
+    -------
+    None
+
+    """
     df_raw = pd.read_csv(fn_features)
     # Keep columns of interest
     df_raw = df_raw[['reg0_id', 'variable_name', 'date', 'mean']]
@@ -81,7 +113,7 @@ def main(fn_features, fn_stats,  step_dic, month_sos, fn_out=''):
 
 
 if __name__ == "__main__":
-    cst.root_dir = 'C:/Users/waldnfr/Documents/projects/leanyf'
+
     rdata_dir = Path(cst.root_dir, 'raw_data')
 
     step_dic = cst.step_dic

@@ -1,12 +1,10 @@
 #!/usr/bin/python
 
 """ 
-	Defining keras architecture.
-	4.4. How big and deep model for our data?
-	4.4.1. Width influence or the bias-variance trade-off
+Model architecture definition
 
-	Multiple inputs: https://www.pyimagesearch.com/2019/02/04/keras-multiple-inputs-and-mixed-data/
-	Multiple outputs: https://github.com/rahul-pande/faces-mtl/blob/master/faces_mtl_age_gender.ipynb
+Multiple inputs: https://www.pyimagesearch.com/2019/02/04/keras-multiple-inputs-and-mixed-data/
+Multiple outputs: https://github.com/rahul-pande/faces-mtl/blob/master/faces_mtl_age_gender.ipynb
 """
 
 import sys, os
@@ -26,7 +24,7 @@ from tensorflow.keras import backend as K
 
 # -----------------------------------------------------------------------
 def Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
-                    activation='sigmoid', verbose=True):
+                     activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -63,8 +61,9 @@ def Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
 
 
 # -----------------------------------------------------------------------
-def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, nunits_fc=1,
-                    activation='sigmoid', verbose=True):
+def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
+                     nunits_fc=1,
+                     activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -102,7 +101,7 @@ def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
 
     # -- Output FC layers
     for add in range(nb_fc - 1):
-        X = Dense(nunits_fc//(2^add), activation=activation)(X)
+        X = Dense(nunits_fc // (2 ^ add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
     out1 = Dense(1, activation='relu', name='out1')(X)
 
@@ -111,6 +110,7 @@ def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
     if verbose:
         model.summary()
     return model
+
 
 # -----------------------------------------------------------------------
 def Archi_CNNw_SIMO_st(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
@@ -192,13 +192,13 @@ def Archi_CNNw_SIMO_mt(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=
     out2 = Dense(1, activation='linear', name='out2')(X2)
     out3 = Dense(1, activation='linear', name='out3')(X2)
 
-    #X2 = Dense(nbunits_conv * funits_fc, activation=activation)(X)
-    #X2 = Dropout(dropout_rate)(X2)
-    #out2 = Dense(1, activation='linear', name='out2')(X2)
+    # X2 = Dense(nbunits_conv * funits_fc, activation=activation)(X)
+    # X2 = Dropout(dropout_rate)(X2)
+    # out2 = Dense(1, activation='linear', name='out2')(X2)
 
-    #X3 = Dense(nbunits_conv * funits_fc, activation=activation)(X)
-    #X3 = Dropout(dropout_rate)(X3)
-    #out3 = Dense(1, activation='linear', name='out3')(X3)
+    # X3 = Dense(nbunits_conv * funits_fc, activation=activation)(X)
+    # X3 = Dropout(dropout_rate)(X3)
+    # out3 = Dense(1, activation='linear', name='out3')(X3)
 
     # Create model.
     model = Model(inputs=Xt_input, outputs=[out1, out2, out3], name=f'Archi_CNNw_SIMO_mt')
@@ -206,9 +206,10 @@ def Archi_CNNw_SIMO_mt(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=
         model.summary()
     return model
 
+
 # -----------------------------------------------------------------------
 def Archi_CNNw_MIMO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
-                       funits_fc=1, activation='sigmoid', verbose=True):
+                    funits_fc=1, activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
         input_shape_t = (Xt[0], Xt[1])
@@ -258,6 +259,7 @@ def Archi_CNNw_MIMO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size
     if verbose:
         model.summary()
     return model
+
 
 # -----------------------------------------------------------------------
 def Archi_CNNw_MIMO_old(Xt, Xv, nbunits_conv=10, verbose=True):

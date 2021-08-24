@@ -1,3 +1,6 @@
+"""
+
+"""
 import dill as pickle
 import pandas as pd
 import numpy as np
@@ -17,6 +20,9 @@ from outputfiles.plot import *
 
 
 def get_season(date_, start_month, sep='-'):
+    """
+    Get season span from date
+    """
     date_ = str(date_)
     date_s = date_.split(sep)
     if int(date_s[1]) < start_month:
@@ -27,6 +33,9 @@ def get_season(date_, start_month, sep='-'):
 
 
 def retain_regions(df, groups, key, target, cum=0.9):
+    """
+    Select ranked regions by decreasing order making up to 90% of the cumulative production
+    """
     my_list = []
 
     for i in df[groups].unique():
@@ -41,6 +50,9 @@ def retain_regions(df, groups, key, target, cum=0.9):
 
 
 def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
+    """
+    Convert dataframe into array
+    """
     binDict = {
         'NDVI': {'min': 0.05, 'range': 0.85, 'n': 64},
         'rad': {'min': 40000, 'range': 280000, 'n': 64},
@@ -77,6 +89,28 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
 
 
 def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
+    """
+    Convert tabular data into arrays usable by a 1D CNN.
+
+    Parameters
+    ----------
+    fn_features : str
+        The file location of the input spreadsheet containing the satellite and climate data.
+    fn_stats : str
+        The file location of the spreadsheet containing the official statistics.
+    fn_out : str, optional
+        The location of the output file.
+    normalise : bool, optional (default = True)
+        Normalise the 2D histograms by image so that the minimum value is 0 and the maximum value is 1.
+    save_plot : bool, optional (default = True)
+        Save plots with input features.
+
+
+    Returns
+    -------
+    None
+
+    """
     df_stats = pd.read_csv(fn_stats)
     df_stats = df_stats[['Year', 'Area', 'Yield', 'Production', 'AU_name', 'ASAP1_ID', 'Crop_name']].copy()
     df_stats['Crop_name'] = df_stats['Crop_name'].apply(lambda x: x.replace(' ', ''))

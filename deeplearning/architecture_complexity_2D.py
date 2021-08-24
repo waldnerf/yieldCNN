@@ -1,12 +1,10 @@
 #!/usr/bin/python
 
-""" 
-	Defining tensorflow.keras architecture.
-	4.4. How big and deep model for our data?
-	4.4.1. Width influence or the bias-variance trade-off
+"""
+Model architecture definition
 
-	Multiple inputs: https://www.pyimagesearch.com/2019/02/04/keras-multiple-inputs-and-mixed-data/
-	Multiple outputs: https://github.com/rahul-pande/faces-mtl/blob/master/faces_mtl_age_gender.ipynb
+Multiple inputs: https://www.pyimagesearch.com/2019/02/04/keras-multiple-inputs-and-mixed-data/
+Multiple outputs: https://github.com/rahul-pande/faces-mtl/blob/master/faces_mtl_age_gender.ipynb
 """
 
 import sys, os

@@ -20,7 +20,7 @@ random.seed(4)
 # import tensorflow.python.util.deprecation as deprecation
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
-from deeplearning.architecture_complexity_1d import *
+from deeplearning.architecture_complexity_1D import *
 from outputfiles.plot import *
 from outputfiles.save import *
 from model_evaluation import *
