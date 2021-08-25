@@ -81,7 +81,7 @@ Data generator delas with both norm and unorm because in any case normalise per 
 In option 2 each image gets the same scale of values (0-1). This means that for a given region, both a good year and a bad year (in terms of yield) will have some grid cells with 1 (the most represented profile). Another option can be tested: 
 3) read data normalized by region (all histos of a region) 
 Note: after this option 3, the norm min max over the whole data set after train/test/val split should be turned off. 
-
+ 
 - [ ] Validation, Validation is now on one single year (no inner loop). We may consider increasing the number of years 
 - [ ] Trend, Trend data (in a way or another) could be passed after CNN 
 

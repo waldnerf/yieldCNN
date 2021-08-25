@@ -184,6 +184,8 @@ if __name__ == "__main__":
     batch_size = 128
     n_trials = 100
 
+    INTERPOLATION = "bilinear"
+
     # ---- Get parameters
     model_type = args.model
     target_var = args.target
@@ -252,9 +254,11 @@ if __name__ == "__main__":
 
                     # as we said we start in Sep now so first forecast (month 1) is using up to end of Nov
                     Xt = Xt_nozero[:, :, 3:(3 + (2 + month) * 3), :]
-                    if input_size == 32:
-                        max_pool_2d = tf.keras.layers.AveragePooling2D(pool_size=(2, 1), strides=(2, 1), padding='same')
-                        Xt = max_pool_2d(Xt).numpy()
+                    Xt = tf.image.resize(Xt, [input_size, input_size]).numpy()
+                    #if input_size == 32:
+                    #max_pool_2d = tf.keras.layers.AveragePooling2D(pool_size=(2, 1), strides=(2, 1), padding='same')
+                    #Xt = max_pool_2d(Xt).numpy()
+                    #
 
                     print('------------------------------------------------')
                     print('------------------------------------------------')
