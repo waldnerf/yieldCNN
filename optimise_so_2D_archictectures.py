@@ -205,7 +205,7 @@ if __name__ == "__main__":
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
     fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
 
-    for input_size in [64, 32]:
+    for input_size in [32, 48, 64]:
         # ---- output files
         dir_out = cst.my_project.params_dir
         dir_out.mkdir(parents=True, exist_ok=True)
@@ -304,7 +304,7 @@ if __name__ == "__main__":
                     if wandb_log:
                         # 1. Start a W&B run
                         wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-                                   group=f'{target_var} - {crop_n} - {month}', config=trial.params,
+                                   group=f'{target_var} - {crop_n} - {month} - {input_size}', config=trial.params,
                                    name=f'{target_var}-{model_type}-{crop_n}-{month}-{hist_norm}',
                                    notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
                                          f'crop ID {crop_n}.')
@@ -317,7 +317,8 @@ if __name__ == "__main__":
                                              'target': target_var,
                                              'n_epochs': n_epochs,
                                              'batch_size': batch_size,
-                                             'n_trials': n_trials
+                                             'n_trials': n_trials,
+                                             'input_size': input_size
                                              })
 
                         # Evaluate best model on test set
