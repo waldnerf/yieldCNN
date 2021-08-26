@@ -93,9 +93,10 @@ def objective_2DCNN(trial):
         Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
-        Xt_train = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
-        Xt_val = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
-        Xt_test = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
+        # TODO: uncomment and check!
+        #Xt_train = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
+        #Xt_val = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
+        #Xt_test = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
 
         # If images are already normalised per region, the following has no effect
         # if not this is a minmax scaling based on the training set.
