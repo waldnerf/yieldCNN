@@ -20,6 +20,8 @@ echo Preprocess data
 python preprocess_2D_inputs.py
 
 echo Run Deep learning part
+echo Delete old nohup
+rm nohup.out
 
 # Option 1: Norm by image, OHE, Yield
 nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
