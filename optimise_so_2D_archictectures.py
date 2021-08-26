@@ -207,6 +207,8 @@ if __name__ == "__main__":
 
     if args.Xshift or args.Xnoise or args.Ynoise:
         data_augmentation = True
+    else:
+        data_augmentation = False
 
     # ---- Define some paths to data
     if args.normalisation == 'norm':
