@@ -15,12 +15,16 @@ else
   aws s3 cp s3://ml4cast/leanyf $DIR --recursive
 fi
 
-echo Execute script
+
+echo Preprocess data
+python preprocess_2D_inputs.py
+
+echo Run Deep learning part
 
 # Option 1: Norm by image, OHE, Yield
-# nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
+nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
 # Option 2: Norm by image, no OHE, Yield
-nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN_SISO --target yield & process_id=$!
+#nohup python optimise_so_2D_archictectures.py --normalisation norm --model 2DCNN_SISO --target yield & process_id=$!
 # Option 3: Not Norm by image, OHE, Yield
 #nohup python optimise_so_2D_archictectures.py --normalisation raw --model 2DCNN_MISO --target yield & process_id=$!
 # Option 4: Not norm by image, no OHE, Yield

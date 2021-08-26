@@ -197,4 +197,12 @@ if __name__ == "__main__":
         fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
     main(fn_features, fn_stats, fn_out, normalise, save_plot)
 
+    # TODO: could be nicer with args.parser
+    normalise = False
+    if normalise:
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
+    else:
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+    main(fn_features, fn_stats, fn_out, normalise, save_plot)
+
 # EOF
