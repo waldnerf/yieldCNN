@@ -22,7 +22,7 @@ if sys.platform == 'win32':
         root_dir = Path(r'D:/PY_data/leanyf')
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
-        wandb_entity = 'cinderella'
+        wandb_entity = 'waldnerf'
 
 else:
     if 'google.colab' in str(get_ipython()):

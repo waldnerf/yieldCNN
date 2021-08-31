@@ -17,6 +17,7 @@ pd.set_option('display.max_columns', 10)
 
 import mysrc.constants as cst
 from outputfiles.plot import *
+from sits.readingsits2D import * #M+
 
 
 def get_season(date_, start_month, sep='-'):
@@ -78,10 +79,13 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
         histo_year = histo[:, start_sel:(start_sel + ts_length)]
         if normalise:
             # normalise by pixel count per time step
-            histo_sum = histo_year.sum(axis=0)
-            # histo_min = np.zeros_like(histo_sum) #histo_year.min(axis=0)
-            # histo_year = (histo_year - histo_min) / (histo_sum - histo_min)
-            histo_year = histo_year / histo_sum
+            # Franz: histo_sum = histo_year.sum(axis=0)
+            # Franz: histo_year = histo_year / histo_sum
+            #M+
+            # Normalize each image between 0 and max. We do not do mi-max because we want that after norm, 0 is a true zero
+            # (no occurrence of data in that bin). This is because in data augmentation zeros are treated differenty (no noise addede)
+            histo_year = histo_year / histo_year.max()
+            #M-
         arr_out.append(histo_year)
 
     arr_out = np.stack(arr_out, axis=2)
@@ -172,8 +176,12 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
         super_title = f'{row["AU_name"]} ({row["Year"]}) - barley {round(row["Yield_Barley"], 2)} t/ha, ' \
                       f'soft wheat {round(row["Yield_Softwheat"], 2)} t/ha, ' \
                       f'durum wheat {round(row["Yield_Durumwheat"], 2)} t/ha, x0=1st dek Aug'
-        fig_name = f'{row["AU_name"]}_{row["Year"]}_2Dinputs.png'
+
         if save_plot:
+            if normalise:
+                fig_name = cst.my_project.root_dir / "figures" / f'{row["AU_name"]}_{row["Year"]}_norm_2Dinputs.png'
+            else:
+                fig_name = cst.my_project.root_dir / "figures" / f'{row["AU_name"]}_{row["Year"]}_raw_2Dinputs.png'
             plot_2D_inputs_by_region(hist, variables, super_title, fig_name=fig_name)
             plt.close()
 
@@ -189,7 +197,10 @@ if __name__ == "__main__":
     rdata_dir = Path(cst.root_dir, 'raw_data')
     fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
-    save_plot = False
+    save_plot = True
+
+    # Run twice, one with normalization and one without so that that the two version of the pickles
+    # are always available
     normalise = True
     if normalise:
         fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'

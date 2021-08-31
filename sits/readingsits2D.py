@@ -83,7 +83,7 @@ def subset_data(Xt, region_ohe, y, subset_bool):
 
 
 # -----------------------------------------------------------------------
-def computingMinMax(Xt, per=2):
+def computingMinMax(Xt, per=0):
     min_per_t = np.percentile(Xt, per, axis=(0, 1, 2))
     max_per_t = np.percentile(Xt, 100 - per, axis=(0, 1, 2))
     return min_per_t, max_per_t
