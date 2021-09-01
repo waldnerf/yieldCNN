@@ -1,9 +1,6 @@
 #!/usr/bin/python
 
-import os, sys
 import argparse
-import random
-import shutil
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 import optuna
@@ -11,7 +8,6 @@ from optuna.samplers import TPESampler
 import joblib
 import random
 import wandb
-import tensorflow as tf
 
 random.seed(4)
 
@@ -24,8 +20,7 @@ tf.get_logger().setLevel('ERROR')
 from deeplearning.architecture_complexity_2D import *
 from outputfiles.plot import *
 from outputfiles.save import *
-from model_evaluation import *
-from outputfiles.evaluation import *
+from evaluation.model_evaluation import *
 from sits.readingsits2D import *
 import mysrc.constants as cst
 import sits.data_generator as data_generator
@@ -212,18 +207,18 @@ if __name__ == "__main__":
         data_augmentation = False
 
     # ---- Define some paths to data
+    fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
     if args.normalisation == 'norm':
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
         hist_norm = 'norm'
     else:
-        fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
         hist_norm = 'raw'
     print("Input file: ", os.path.basename(str(fn_indata)))
 
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
     fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
 
-    for input_size in [32, 48, 64]:
+    #for input_size in [32, 48, 64]:
+    for input_size in [64, 32]:
         # ---- output files
         dir_out = cst.my_project.params_dir
         dir_out.mkdir(parents=True, exist_ok=True)
@@ -231,12 +226,27 @@ if __name__ == "__main__":
         dir_res.mkdir(parents=True, exist_ok=True)
         out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
 
-        # ---- Downloading
+        # ---- Downloading (always not normalized)
         Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
+
+
+        # M+ original resizing of Franz using tf.image.resize was bit odd as it uses bilinear interp (filling thus zeros)
+        # resize if required (only resize to 32 possible)
+        if input_size != 64:
+            if input_size == 32:
+                Xt_full = Xt_full.reshape(Xt_full.shape[0], -1, 2, Xt_full.shape[-2], Xt_full.shape[-1]).sum(2)
+            else:
+                print("Resizing request is not available")
+                sys.exit()
+
+        if args.normalisation == 'norm':
+            max_per_image = np.max(Xt_full, axis=(1, 2), keepdims=True)
+            Xt_full = Xt_full / max_per_image
+         # M-
 
         trial_history = []
         # loop through all crops
-        for crop_n in [1]:  # range(y.shape[1]): TODO: only process durum wheat!
+        for crop_n in [1]:  # range(y.shape[1]): TODO: only process durum wheat! (0 - Barley, 1 - Durum, 2- Soft)
             dir_crop = dir_res / f'crop_{crop_n}'
             dir_crop.mkdir(parents=True, exist_ok=True)
 
@@ -275,8 +285,9 @@ if __name__ == "__main__":
                 else:
                     # Clean up directory if incomplete run of if overwrite is True
                     rm_tree(dir_tgt)
-
-                    # as we said we start in Sep now so first forecast (month 1) is using up to end of Nov
+                    # data start in first dek of August, index 0
+                    # the model uses data from first dek of September (to account for precipitation, field preparation), index 3
+                    # first forecast (month 1) is using up to end of Nov, index 11
                     Xt = Xt_nozero[:, :, 3:(3 + (2 + month) * 3), :]
 
                     print('------------------------------------------------')
@@ -291,7 +302,7 @@ if __name__ == "__main__":
                                                 pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
                                                 )
 
-                    # Force the sample to sample at previously best model configuration
+                    # Force the sampler to sample at previously best model configuration
                     if len(trial_history) > 0:
                         for best_previous_trial in trial_history:
                             study.enqueue_trial(best_previous_trial)

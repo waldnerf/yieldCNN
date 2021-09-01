@@ -96,7 +96,8 @@ if __name__ == "__main__":
         fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
         fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
         out = []
-        input_data = '1D'
+        #input_data = '1D'
+        input_data = '2D'
         for model_name in dir_out.glob(f'*{input_data}*'):
             model_name = model_name.parts[-1]
             print(model_name)
@@ -107,7 +108,7 @@ if __name__ == "__main__":
                     if len(fns) > 0:
                         res_i = model_evaluation(fns[0], crop_id, forecast_time, model_name, fn_asapID2AU, fn_stats90)
                         out.append(res_i)
-                    if len(fns)>1:
+                    if len(fns) > 1:
                         print(dir_fn)
         df_out = pd.concat(out)
         df_out.to_csv(cst.root_dir / f"data/model_evaluation_{input_data}CNN.csv", index=False)

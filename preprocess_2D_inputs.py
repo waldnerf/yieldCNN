@@ -54,8 +54,15 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
     """
     Convert dataframe into array
     """
-    binDict = {
+    binDict_v2 = {
         'NDVI': {'min': 0.05, 'range': 0.85, 'n': 64},
+        'rad': {'min': 40000, 'range': 280000, 'n': 64},
+        'rainfall': {'min': 0, 'range': 100, 'n': 64},
+        'temperature': {'min': -5, 'range': 50, 'n': 64}
+    }
+    #M: This version 3 fixing the issue of NDVI stripes due to interaction between bin size and NDVI coding 8 bit
+    binDict = {
+        'NDVI': {'min': 0.05, 'range': 0.9216, 'n': 64},
         'rad': {'min': 40000, 'range': 280000, 'n': 64},
         'rainfall': {'min': 0, 'range': 100, 'n': 64},
         'temperature': {'min': -5, 'range': 50, 'n': 64}
@@ -77,15 +84,16 @@ def get_2D_histogram(df, unit, year, ts_length, ts_start, normalise=True):
 
         start_sel = np.where([x == f'{year}{ts_start}' for x in xValues])[0][0]
         histo_year = histo[:, start_sel:(start_sel + ts_length)]
-        if normalise:
-            # normalise by pixel count per time step
-            # Franz: histo_sum = histo_year.sum(axis=0)
-            # Franz: histo_year = histo_year / histo_sum
-            #M+
-            # Normalize each image between 0 and max. We do not do mi-max because we want that after norm, 0 is a true zero
-            # (no occurrence of data in that bin). This is because in data augmentation zeros are treated differenty (no noise addede)
-            histo_year = histo_year / histo_year.max()
-            #M-
+        # Normalization moved to optmize
+        # if normalise:
+        #     # normalise by pixel count per time step
+        #     # Franz: histo_sum = histo_year.sum(axis=0)
+        #     # Franz: histo_year = histo_year / histo_sum
+        #     #M+
+        #     # Normalize each image between 0 and max. We do not do mi-max because we want that after norm, 0 is a true zero
+        #     # (no occurrence of data in that bin). This is because in data augmentation zeros are treated differenty (no noise addede)
+        #     histo_year = histo_year / histo_year.max()
+        #     #M-
         arr_out.append(histo_year)
 
     arr_out = np.stack(arr_out, axis=2)
@@ -195,25 +203,30 @@ def main(fn_features, fn_stats, fn_out='', normalise=True, save_plot=True):
 
 if __name__ == "__main__":
     rdata_dir = Path(cst.root_dir, 'raw_data')
-    fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data.csv'
+    fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data_v3.csv' #Algeria_ASAP_2d_data_v3
     fn_stats = rdata_dir / f'{cst.target}_stats.csv'
     save_plot = True
 
-    # Run twice, one with normalization and one without so that that the two version of the pickles
-    # are always available
-    normalise = True
-    if normalise:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
-    else:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
-    main(fn_features, fn_stats, fn_out, normalise, save_plot)
+    # M+ remove norm from here and put it in optimize
+    # # Run twice, one with normalization and one without so that that the two version of the pickles
+    # # are always available
+    # normalise = True
+    # if normalise:
+    #     fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
+    # else:
+    #     fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+    # main(fn_features, fn_stats, fn_out, normalise, save_plot)
+    #
+    # # TODO: could be nicer with args.parser
+    # normalise = False
+    # if normalise:
+    #     fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
+    # else:
+    #     fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+    # main(fn_features, fn_stats, fn_out, normalise, save_plot)
 
-    # TODO: could be nicer with args.parser
     normalise = False
-    if normalise:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_norm.pickle'
-    else:
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+    fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
     main(fn_features, fn_stats, fn_out, normalise, save_plot)
 
 # EOF

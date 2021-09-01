@@ -1,9 +1,6 @@
 #!/usr/bin/python
 
-import os, sys
 import argparse
-import random
-import shutil
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 import optuna
@@ -22,8 +19,7 @@ random.seed(4)
 from deeplearning.architecture_complexity_2D import *
 from outputfiles.plot import *
 from outputfiles.save import *
-from model_evaluation import *
-from outputfiles.evaluation import *
+from evaluation.model_evaluation import *
 from sits.readingsits2D import *
 import mysrc.constants as cst
 import sits.data_generator as data_generator
