@@ -343,8 +343,8 @@ if __name__ == "__main__":
                     if wandb_log:
                         # 1. Start a W&B run
                         wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-                                   group=f'{target_var} - {crop_n} - {month} - {input_size}', config=trial.params,
-                                   name=f'{target_var}-{model_type}-{crop_n}-{month}-{hist_norm}',
+                                   group=f'{target_var}C{crop_n}M{month}SZ{input_size}', config=trial.params,
+                                   name=f'{target_var}-{model_type}-C{crop_n}-M{month}-{hist_norm}-{da_label}',
                                    notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
                                          f'crop ID {crop_n}.')
 
