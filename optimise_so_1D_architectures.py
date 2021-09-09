@@ -86,7 +86,7 @@ def objective_1DCNN(trial):
         Xt_test = reshape_data(Xt_test, n_channels)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t = computingMinMax(Xt_train, per=2)
+        min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
         Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
         Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
         Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
@@ -95,7 +95,7 @@ def objective_1DCNN(trial):
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
         ys_train = transformer_y.transform(y_train[:, [crop_n]])
         ys_val = transformer_y.transform(y_val[:, [crop_n]])
-        ys_test = transformer_y.transform(y_test[:, [crop_n]])
+        #ys_test = transformer_y.transform(y_test[:, [crop_n]])
 
         # We compile our model with a sampled learning rate.
         if model_type == '1DCNN_SISO':
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     overwrite = args.overwrite
 
     # ---- Define some paths to data
-    fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_dataset.csv')
+    fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw.csv')
     print("Input file: ", os.path.basename(str(fn_indata)))
 
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
@@ -194,23 +194,28 @@ if __name__ == "__main__":
     out_model = f'archi-{model_type}.h5'
 
     # ---- Downloading
-    Xt_full, area, region_id, groups, yld = data_reader(fn_indata)
-    
-    # ---- Format target variable
-    target_var = 'yield'
-    y = yld
-    xlabels = 'Predictions (t/ha)'
-    ylabels = 'Observations (t/ha)'
-
-    # ---- Convert region to one hot
-    region_ohe = add_one_hot(region_id)
+    Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
 
     # loop through all crops
-    for crop_n in range(y.shape[1]):
+    for crop_n in [0]: # range(y.shape[1]): #!TODO: now only barley
         dir_crop = dir_res / f'crop_{crop_n}'
         dir_crop.mkdir(parents=True, exist_ok=True)
+
+        # make sure that we do not keep entries with 0 ton/ha yields,
+        yields_2_keep = ~(yld_full[:, crop_n] <= 0)
+        Xt_nozero = Xt_full[yields_2_keep, :]
+        region_id = region_id_full[yields_2_keep]
+        groups = groups_full[yields_2_keep]
+        yld = yld_full[yields_2_keep, :]
+        # ---- Format target variable
+        target_var = 'yield'
+        y = yld
+        xlabels = 'Predictions (t/ha)'
+        ylabels = 'Observations (t/ha)'
+        # ---- Convert region to one hot
+        region_ohe = add_one_hot(region_id)
         # loop by month
-        for month in range(2, 9):
+        for month in range(1, cst.n_month_analysis + 1):
             dir_tgt = dir_crop / f'month_{month}'
             dir_tgt.mkdir(parents=True, exist_ok=True)
 
@@ -219,13 +224,19 @@ if __name__ == "__main__":
             else:
                 rm_tree(dir_tgt)
                 indices = list(range(0, Xt_full.shape[1] // n_channels))
-                msel = [True if x < (month * 3) else False for x in indices] * n_channels
-                Xt = Xt_full[:, msel]
+                #
+                first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
+                # data are thus ordered according to a local year having index = 0 at first_month_in__raw_data
+                first = (cst.first_month_input_local_year) * 3
+                last = (cst.first_month_analysis_local_year + month - 1) * 3
+                msel = [True if ((x >= first) and (x < last)) else False for x in indices] * n_channels
+                # msel = [True if x < (month * 3) else False for x in indices] * n_channels
+                Xt = Xt_nozero[:, msel]
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
                 print(f'=> noarchi: {model_type}'
-                      f' {target_var} - crop: {crop_n} - month: {month} =')
+                      f' {target_var} - crop: {crop_n} - month: {month}')
                 study = optuna.create_study(direction='maximize',
                                             sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
@@ -258,7 +269,7 @@ if __name__ == "__main__":
                     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
                                group=f'{target_var} - {crop_n} - {month}', config=trial.params,
                                name=f'{target_var}-{model_type}-{crop_n}-{month}',
-                               notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
+                               notes=f'Performance of a 1D CNN model for {target_var} forecasting in Algeria for'
                                      f'crop ID {crop_n}.')
                     # 2. Save model inputs and hyperparameters
                     wandb.config.update({'model_type': model_type,

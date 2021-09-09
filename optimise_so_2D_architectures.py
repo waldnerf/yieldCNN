@@ -83,12 +83,12 @@ def objective_2DCNN(trial):
         Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, train_indices)
         # training data augmentation
         if data_augmentation:
-            Xt_train, Xv_train, y_train = data_generator.generate(Xt_train.shape[2], train_indices)
+            Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], train_indices)
 
         Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
-        # TODO: uncomment and check!
+        # removed, this is not the right way, resampling has now been made upfront in main
         #X_train = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
         #Xt_val = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
         #Xt_test = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 
         trial_history = []
         # loop through all crops
-        for crop_n in [1]:  # range(y.shape[1]): TODO: only process durum wheat! (0 - Barley, 1 - Durum, 2- Soft)
+        for crop_n in [0]:  # range(y.shape[1]): TODO: only process one! (0 - Barley, 1 - Durum, 2- Soft)
             dir_crop = dir_res / f'crop_{crop_n}'
             dir_crop.mkdir(parents=True, exist_ok=True)
 
@@ -271,7 +271,7 @@ if __name__ == "__main__":
             region_ohe = add_one_hot(region_id)
 
             # loop by month
-            for month in range(1, 9):
+            for month in range(1, cst.n_month_analysis+1):
                 dir_tgt = dir_crop / f'month_{month}'
                 dir_tgt.mkdir(parents=True, exist_ok=True)
 
@@ -285,10 +285,13 @@ if __name__ == "__main__":
                 else:
                     # Clean up directory if incomplete run of if overwrite is True
                     rm_tree(dir_tgt)
-                    # data start in first dek of August, index 0
-                    # the model uses data from first dek of September (to account for precipitation, field preparation), index 3
+                    # data start in first dek of August (cst.first_month_in__raw_data), index 0
+                    # the model uses data from first dek of September (to account for precipitation, field preparation),
+                    # cst.first_month_input_local_year, =1, 1*3, index 3
                     # first forecast (month 1) is using up to end of Nov, index 11
-                    Xt = Xt_nozero[:, :, 3:(3 + (2 + month) * 3), :]
+                    first = (cst.first_month_input_local_year) * 3
+                    last = (cst.first_month_analysis_local_year + month - 1) * 3 #this is 12
+                    Xt = Xt_nozero[:, :, first:last, :] # this takes 9 elements, from 3 to 11 included
 
                     print('------------------------------------------------')
                     print('------------------------------------------------')

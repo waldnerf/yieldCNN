@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import mysrc.constants as cst
 
 # -----------------------------------------------------------------------
 def computingAbsMinMaxPerImagePerBand(Xt):
@@ -160,5 +161,6 @@ class DG(object):
             #self.groups_augmented = np.tile(self.groups_augmented, 2)
             self.X_augmented = np.tile(self.X_augmented, (2,1,1,1))
         # adjust dimension of lenTS
-        return self.X_augmented[:,:,3:3+lenTS], self.region_ohe_augmented, self.y_augmented
+        first = (cst.first_month_input_local_year) * 3
+        return self.X_augmented[:,:,first:first+lenTS,:], self.region_ohe_augmented, self.y_augmented
 

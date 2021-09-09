@@ -36,7 +36,7 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
     # -- parameters of the architecture
     l2_rate = 1.e-6
 
-    # Define the input placeholder.
+    # Define the input placeholder. (Input() is used to instantiate a Keras tensor)
     Xt_input = Input(input_shape_t, name='ts_input')
     Xv_input = Input(input_shape_v, name='v_input')
 

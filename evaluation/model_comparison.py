@@ -24,7 +24,7 @@ def plot_accuracy_vs_time(df_, my_colors_, x_labels, filename=''):
                 axs[i].set_xlabel('Forcast date')
                 axs[i].legend(loc="lower left", title="", frameon=False)
     plt.subplots_adjust(hspace=0.3)
-    plt.show()
+    #plt.show()
     if filename != '':
         plt.savefig(filename, dpi=450)
 
@@ -46,8 +46,8 @@ df_bench.loc[df_bench.Estimator == 'PeakNDVI', 'Estimator'] = 'Peak NDVI'
 # -- Plot Best 2D CNN vs best benchmarks
 x_tick_labels = ['Dec 1', 'Jan 1', 'Feb 1', 'Mar 1', 'Apr 1', 'May 1', 'Jun 1', 'Jul 1']
 my_colors = ['#78b6fc', '#a9a9a9', '#ffc000' ]# '#034da2']
-
-plot_accuracy_vs_time(df_bench, my_colors, x_tick_labels)
+fn = cst.root_dir / f"data/ML_performances.png"
+plot_accuracy_vs_time(df_bench, my_colors, x_tick_labels, fn)
 
 # -- Plot 1D CNN
 df_1D = pd.read_csv(cst.root_dir / f"data/model_evaluation_1DCNN.csv")
@@ -74,7 +74,10 @@ for i in range(df_.Crop.unique().shape[0]):
             axs[i].legend(loc="lower left", title="", frameon=False)
 plt.subplots_adjust(hspace=0.3, top=0.92)#, bottom=0.1)
 plt.suptitle(super_title, fontsize=15)
-plt.show()
+#plt.show()
+filename = cst.root_dir / f"data/1D_performances.png"
+if filename != '':
+    plt.savefig(filename, dpi=450)
 
 
 
@@ -105,7 +108,8 @@ for i in range(df_.Crop.unique().shape[0]):
             axs[i].legend(loc="lower left", title="", frameon=False)
 plt.subplots_adjust(hspace=0.3, top=0.92)#, bottom=0.1)
 plt.suptitle(super_title, fontsize=15)
-plt.show()
+#plt.show()
+filename = cst.root_dir / f"data/2D_performances.png"
 
 if filename != '':
     plt.savefig(filename, dpi=450)

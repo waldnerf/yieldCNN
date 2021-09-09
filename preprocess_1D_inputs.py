@@ -70,9 +70,17 @@ def main(fn_features, fn_stats,  step_dic, month_sos, fn_out=''):
 
     """
     df_raw = pd.read_csv(fn_features)
+    # M+ each single date in the data is replicated 4 times (using different masks), Franz kept them all (crop, pasture, dynamic, static, OM),
+    # taking the average!, wrong and no idea of effect
+    df_raw = df_raw[df_raw['class_name'] == 'crop']
+    df_raw = df_raw[df_raw['classset_name'] == 'static masks']
+    # M-
+
     # Keep columns of interest
     df_raw = df_raw[['reg0_id', 'variable_name', 'date', 'mean']]
     df_raw = df_raw.rename(columns={'reg0_id': 'ASAP1_ID'}, inplace=False)
+
+
 
     # Add or modify column values
     df_raw['Year'] = df_raw['date'].apply(lambda x: get_season(x, month_sos))
@@ -83,7 +91,7 @@ def main(fn_features, fn_stats,  step_dic, month_sos, fn_out=''):
     # Go from long to wide
     df_wide = df_raw.pivot_table(index=['ASAP1_ID', 'Year'],
                                  columns=['variable_name', 'step'],
-                                 values='mean').dropna()
+                                 values='mean').dropna() #taking the mean here, it is the defaults!!!
     df_wide.columns = df_wide.columns.map(lambda x: '{}_{}'.format(*x))
     df_wide.reset_index(inplace=True)
 
