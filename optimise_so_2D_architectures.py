@@ -200,9 +200,15 @@ if __name__ == "__main__":
     target_var = args.target
     wandb_log = args.wandb
     overwrite = args.overwrite
-
+    da_label = ''
     if args.Xshift or args.Xnoise or args.Ynoise:
         data_augmentation = True
+        if args.Xshift == True:
+            da_label = da_label + 'Xshift'
+        if args.Xnoise == True:
+            da_label = da_label + '_Xnoise'
+        if args.Ynoise == True:
+            da_label = da_label + '_Ynoise'
     else:
         data_augmentation = False
 
@@ -222,7 +228,7 @@ if __name__ == "__main__":
         # ---- output files
         dir_out = cst.my_project.params_dir
         dir_out.mkdir(parents=True, exist_ok=True)
-        dir_res = dir_out / f'Archi_{str(model_type)}_{target_var}_{hist_norm}_{input_size}'
+        dir_res = dir_out / f'Archi_{str(model_type)}_{target_var}_{hist_norm}_{input_size}_{da_label}'
         dir_res.mkdir(parents=True, exist_ok=True)
         out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
 

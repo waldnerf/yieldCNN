@@ -23,9 +23,7 @@ if sys.platform == 'win32':
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
         wandb_entity = 'mmeroni' \
-        # this is to make sure it works on idl server'
-        os.environ["HTTPS_PROXY"] = 'http://meronmi:micmer_0@autoproxy.cec.eu.int:8012'
-        os.environ["HTTP_PROXY"] = 'http://meronmi:micmer_0@autoproxy.cec.eu.int:8012'
+        
 
 
 else:

@@ -214,6 +214,7 @@ if __name__ == "__main__":
         ylabels = 'Observations (t/ha)'
         # ---- Convert region to one hot
         region_ohe = add_one_hot(region_id)
+        trial_history = []
         # loop by month
         for month in range(1, cst.n_month_analysis + 1):
             dir_tgt = dir_crop / f'month_{month}'
@@ -241,6 +242,11 @@ if __name__ == "__main__":
                                             sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
+                # Force the sampler to sample at previously best model configuration
+                if len(trial_history) > 0:
+                    for best_previous_trial in trial_history:
+                        study.enqueue_trial(best_previous_trial)
+
                 study.optimize(objective_1DCNN, n_trials=n_trials)
 
                 trial = study.best_trial
@@ -253,6 +259,7 @@ if __name__ == "__main__":
                 print("Params: ")
                 for key, value in trial.params.items():
                     print("{}: {}".format(key, value))
+                trial_history.append(trial.params)
 
                 joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
                 # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
