@@ -17,6 +17,8 @@ fi
 
 echo Execute script
 
+python preprocess_inputs.py --D 1
+
 # Option 1: 1DCNN_SISO
 nohup python optimise_so_1D_architectures.py --model 1DCNN_SISO & process_id=$!
 # Option 2: 1DCNN_MISO

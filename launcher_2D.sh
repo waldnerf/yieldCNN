@@ -17,12 +17,25 @@ fi
 
 
 echo Preprocess data
-python preprocess_2D_inputs.py
+#python preprocess_2D_inputs.py
+python preprocess_inputs.py --D 2
 
 echo Run Deep learning part
 echo Delete old nohup
 rm nohup.out
 
+#Michele tests 9 Sep 2021
+# Option 1: Norm by image, OHE, Yield
+nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
+# Option 2: Norm by image, no OHE, Yield
+#nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_SISO --target yield & process_id=$!
+# Option 3: Norm by image, OHE, Yield, X aumentation
+#nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield --Xshift True --Xnoise True & process_id=$!
+# Option 4: Norm by image, OHE, Yield, X aumentation, Y augmentation
+#nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_SISO --target yield --Xshift True --Xnoise True --Ynoise True  & process_id=$!
+
+
+# Franz's tests:
 # Option 1: Norm by image, OHE, Yield
 nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
 # Option 2: Norm by image, no OHE, Yield
