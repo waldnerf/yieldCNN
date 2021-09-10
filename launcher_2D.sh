@@ -37,7 +37,7 @@ nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_
 
 # Franz's tests:
 # Option 1: Norm by image, OHE, Yield
-nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
+# nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield & process_id=$!
 # Option 2: Norm by image, no OHE, Yield
 #nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_SISO --target yield & process_id=$!
 # Option 3: Not Norm by image, OHE, Yield
