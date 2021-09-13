@@ -22,7 +22,7 @@ if sys.platform == 'win32':
         root_dir = Path(r'D:/PY_data/leanyf')
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
-        wandb_entity = 'mmeroni' \
+        wandb_entity = 'mmeroni' 
         # this is to make sure it works on idl server'
         print(os.environ["HTTPS_PROXY"])
         print(os.environ["HTTP_PROXY"])
@@ -46,7 +46,7 @@ else:
             root_dir = Path(r"/home/ec2-user/leanyf")
             git_dir = Path(r'/home/ec2-user/yieldcnn')
             wandb_project = 'leanyf'
-            wandb_entity = 'waldnerf'
+            wandb_entity = 'mmeroni'
 
 for i in [str(root_dir), str(git_dir)]:
     sys.path.insert(0, i)
