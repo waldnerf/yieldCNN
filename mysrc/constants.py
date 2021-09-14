@@ -22,7 +22,7 @@ if sys.platform == 'win32':
         root_dir = Path(r'D:/PY_data/leanyf')
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
-        wandb_entity = 'mmeroni' 
+        wandb_entity = 'mmeroni'
         # this is to make sure it works on idl server'
         print(os.environ["HTTPS_PROXY"])
         print(os.environ["HTTP_PROXY"])
