@@ -6,6 +6,7 @@ conda activate tensorflow2_latest_p37
 
 # check if data are already there, if not download from s3 bucket
 DIR="/home/ec2-user/leanyf"
+DIRCode="/home/ec2-user/yieldCNN"
 if [ -d "$DIR" ]; then
   ### Take action if $DIR exists ###
   echo "${DIR} exists"
@@ -61,8 +62,13 @@ python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO -
 #wait $process_id
 #echo "Exit status: $?"
 
+echo Copy log files
+cp DIRCode/python.log $DIR/
+cp DIRCode/launcher_2D_out.log  $DIR/
+
 echo Syncing on S3
-aws s3 cp $DIR s3://ml4cast/leanyf --recursive
+aws s3 sync $DIR s3://ml4cast/leanyf
+#aws s3 cp $DIR s3://ml4cast/leanyf --recursive
 
 echo Shutting down machine
 sudo shutdown -h now
