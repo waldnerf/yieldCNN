@@ -26,7 +26,7 @@ echo Run Deep learning part
 
 #Michele tests 9 Sep 2021
 # Option 1: Norm by image, OHE, Yield
-python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield >> python.out
+python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield >> python.log
 # Option 2: Norm by image, no OHE, Yield
 #nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_SISO --target yield & process_id=$!
 # Option 3: Norm by image, OHE, Yield, X aumentation

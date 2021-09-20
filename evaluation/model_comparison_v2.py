@@ -46,9 +46,39 @@ df_bench.loc[df_bench.Estimator == 'PeakNDVI', 'Estimator'] = 'Peak NDVI'
 # -- Plot Best 2D CNN vs best benchmarks
 x_tick_labels = ['Dec 1', 'Jan 1', 'Feb 1', 'Mar 1', 'Apr 1', 'May 1', 'Jun 1', 'Jul 1']
 my_colors = ['#78b6fc', '#a9a9a9', '#ffc000' ]# '#034da2']
+
+
+for crop_name in df_bench['Crop'].unique():
+    fig, axs = plt.subplots(figsize=(12, 3), constrained_layout=True)
+    #benchmark
+    df_i = df_bench.loc[df_bench.Crop == crop_name].copy()
+    mdl = 'Null model'
+    axs.plot(df_i.loc[df_i.Estimator == mdl, 'lead_time'].values, df_i.loc[df_i.Estimator == mdl, 'rRMSE_p'].values,
+             color='grey', linewidth=1, marker='o', label=mdl)
+    mdl = 'Peak NDVI'
+    axs.plot(df_i.loc[df_i.Estimator == mdl, 'lead_time'].values, df_i.loc[df_i.Estimator == mdl, 'rRMSE_p'].values,
+             color='red', linewidth=1, marker='o', label=mdl)
+    mdl = 'Machine Learning'
+    axs.plot(df_i.loc[df_i.Estimator == mdl, 'lead_time'].values, df_i.loc[df_i.Estimator == mdl, 'rRMSE_p'].values,
+             color='blue', linewidth=1, marker='o', label=mdl)
+    #aggiustare grafico come ML e salvare!!
+    axs.set_ylim(0, 50)
+    axs.set_ylabel('rRMSEp (%)')
+    axs.set_xticks(df_i.lead_time.unique())
+    axs.set_xticklabels(x_tick_labels)
+    axs.set_xlabel('Forecast time')
+    # axs.set_title(crop_name + ', ' + y_var, fontsize=12)
+    axs.set_title(crop_name, fontsize=12)
+    # axs.set_title(axTilte,  fontsize=12)
+    # fig.suptitle(crop_name + ', ' + y_var, fontsize=14, fontweight='bold')
+    axs.legend(frameon=False, loc='upper left', ncol=len(axs.lines))
+    fn = cst.root_dir / f'data/ML_performances_{crop_name}.png'
+    plt.savefig(fn, dpi=450)
+    plt.close()
+
+#OLD CODE OF FRANZ
 fn = cst.root_dir / f"data/ML_performances.png"
 plot_accuracy_vs_time(df_bench, my_colors, x_tick_labels, fn)
-
 # -- Plot 1D CNN
 if False:
     df_1D = pd.read_csv(cst.root_dir / f"data/model_evaluation_1DCNN.csv")

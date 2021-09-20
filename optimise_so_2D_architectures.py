@@ -250,9 +250,11 @@ if __name__ == "__main__":
             Xt_full = Xt_full / max_per_image
          # M-
 
-        trial_history = []
+
         # loop through all crops
-        for crop_n in [0]:  # range(y.shape[1]): TODO: only process one! (0 - Barley, 1 - Durum, 2- Soft)
+        for crop_n in [1,2]:  # range(y.shape[1]): TODO: only process one! (0 - Barley, 1 - Durum, 2- Soft)
+            #clean trial history for a new crop
+            trial_history = []
             dir_crop = dir_res / f'crop_{crop_n}'
             dir_crop.mkdir(parents=True, exist_ok=True)
 
