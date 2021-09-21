@@ -7,6 +7,7 @@ Defining tensorflow.keras architecture, and training the models
 import sys, os
 import numpy as np
 import time
+import os.path
 
 import tensorflow.keras
 from tensorflow.keras import layers
@@ -199,6 +200,11 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
                            verbose=0, callbacks=callback_list)
 
     del model
+    if os.path.exists(out_model_file.history) == False:
+        print('architecture_features.py, no model file will generate an error. Printing model_hist')
+        print('************************************************')
+        print(model_hist)
+        print('************************************************')
     model = load_model(out_model_file)
     pred = model.predict(x=X_val)
     return model, pred
