@@ -63,8 +63,8 @@ python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO -
 #echo "Exit status: $?"
 
 echo Copy log files
-cp DIRCode/python.log $DIR/
-cp DIRCode/launcher_2D_out.log $DIR/
+cp $DIRCode/python.log $DIR/
+cp $DIRCode/launcher_2D_out.log $DIR/
 
 echo Syncing on S3
 aws s3 sync $DIR s3://ml4cast/leanyf
