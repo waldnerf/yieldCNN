@@ -25,6 +25,10 @@ echo Run Deep learning part
 # echo Delete old nohup
 # rm nohup.out
 
+echo Delete old los
+rm $DIRCode/python.log
+rm $DIRCode/launcher_2D_out.log
+
 #Michele tests 23 Sep 2021 update (fixed agparser bugs) * use -wandb to activate wandb loggin
 # Option 1: Norm by image, OHE, Yield
 python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO --target yield >> python.log
