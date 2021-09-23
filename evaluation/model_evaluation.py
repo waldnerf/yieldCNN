@@ -102,7 +102,7 @@ if __name__ == "__main__":
             model_name = model_name.parts[-1]
             print(model_name)
             for crop_id in range(0, 3):
-                for forecast_time in range(2, 9):
+                for forecast_time in cst.forecast_times:
                     dir_fn = dir_out / f'{model_name}/crop_{crop_id}/month_{forecast_time}/best_model'
                     fns = [x for x in dir_fn.glob('*.csv')]
                     if len(fns) > 0:
@@ -110,6 +110,7 @@ if __name__ == "__main__":
                         out.append(res_i)
                     if len(fns) > 1:
                         print(dir_fn)
+                        sys.exit("More than 1 best csv")
         df_out = pd.concat(out)
         df_out.to_csv(cst.root_dir / f"data/model_evaluation_{input_data}CNN.csv", index=False)
 

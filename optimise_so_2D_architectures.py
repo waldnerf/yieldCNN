@@ -180,11 +180,16 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, default='2DCNN_SISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
-    parser.add_argument('--Xshift', type=bool, default=False, help='Data aug, shiftX')
-    parser.add_argument('--Xnoise', type=bool, default=False, help='Data aug, noiseX')
-    parser.add_argument('--Ynoise', type=bool, default=False, help='Data aug, noiseY')
-    parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
-    parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
+    parser.add_argument('--Xshift', dest='Xshift', action='store_true', default=False, help='Data aug, shiftX')
+    #parser.add_argument('--Xshift', type=bool, default=False, help='Data aug, shiftX')
+    parser.add_argument('--Xnoise', dest='Xnoise', action='store_true', default=False, help='Data aug, noiseX')
+    #parser.add_argument('--Xnoise', type=bool, default=False, help='Data aug, noiseX')
+    parser.add_argument('--Ynoise', dest='Ynoise', action='store_true', default=False, help='Data aug, noiseY')
+    #parser.add_argument('--Ynoise', type=bool, default=False, help='Data aug, noiseY')
+    parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
+    #parser.add_argument('--wandb', type=bool, help='Store results on wandb.io') #default=True,
+    parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False, help='Overwrite existing results')
+    #parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
 
     # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
@@ -193,12 +198,14 @@ if __name__ == "__main__":
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 128
-    n_trials = 100
+    n_trials = 100 #100 TODO: 2 is just for debug
 
     # ---- Get parameters
     model_type = args.model
     target_var = args.target
     wandb_log = args.wandb
+    if wandb_log:
+        print('Wandb log requested')
     overwrite = args.overwrite
     da_label = ''
     if args.Xshift or args.Xnoise or args.Ynoise:
@@ -280,6 +287,7 @@ if __name__ == "__main__":
 
             # loop by month
             for month in range(1, cst.n_month_analysis+1):
+
                 dir_tgt = dir_crop / f'month_{month}'
                 dir_tgt.mkdir(parents=True, exist_ok=True)
 

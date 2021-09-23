@@ -93,7 +93,8 @@ if target == 'Algeria':
     first_month_input_local_year = 1 # September
     first_month_analysis_local_year = 4 # December, first analysis is made 1st Dec
     n_month_analysis = 8 # Last analyis 1st July
-
+    forecast_times = range(1,9) # forecast steps
+    crop_name_ind_dict = {'Barley': 0, 'Durum wheat': 1, 'Soft wheat': 2} #this is because of Franz's code in preprocess_2D_inputs
 
     #calendar_dek_to_use_as_step1 = 22 #(it is first of aug, as for 2D CNN)
     #month_sos = 8

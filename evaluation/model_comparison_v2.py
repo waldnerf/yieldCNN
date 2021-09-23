@@ -1,6 +1,8 @@
 import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt
+import os.path
+
 
 import mysrc.constants as cst
 
@@ -28,8 +30,8 @@ def plot_accuracy_vs_time(df_, my_colors_, x_labels, filename=''):
     if filename != '':
         plt.savefig(filename, dpi=450)
 
+target_var = 'Yield'
 # -- Read in results
-
 # ML and simple benchmarks
 rdata_dir = Path(cst.root_dir, 'raw_data')
 fn_benchmark = rdata_dir / r'all_model_output.csv'#best_ML_benchnarks.csv'
@@ -47,6 +49,10 @@ df_bench.loc[df_bench.Estimator == 'PeakNDVI', 'Estimator'] = 'Peak NDVI'
 x_tick_labels = ['Dec 1', 'Jan 1', 'Feb 1', 'Mar 1', 'Apr 1', 'May 1', 'Jun 1', 'Jul 1']
 my_colors = ['#78b6fc', '#a9a9a9', '#ffc000' ]# '#034da2']
 
+if os.path.exists(cst.root_dir / f"data/model_evaluation_2DCNN.csv"):
+    df_2D = pd.read_csv(cst.root_dir / f"data/model_evaluation_2DCNN.csv")
+if os.path.exists(cst.root_dir / f"data/model_evaluation_1DCNN.csv"):
+    df_1D = pd.read_csv(cst.root_dir / f"data/model_evaluation_1DCNN.csv")
 
 for crop_name in df_bench['Crop'].unique():
     fig, axs = plt.subplots(figsize=(12, 3), constrained_layout=True)
@@ -61,6 +67,19 @@ for crop_name in df_bench['Crop'].unique():
     mdl = 'Machine Learning'
     axs.plot(df_i.loc[df_i.Estimator == mdl, 'lead_time'].values, df_i.loc[df_i.Estimator == mdl, 'rRMSE_p'].values,
              color='blue', linewidth=1, marker='o', label=mdl)
+    # plot 2d results if present
+    if os.path.exists(cst.root_dir / f"data/model_evaluation_2DCNN.csv"):
+        crop_ind = cst.crop_name_ind_dict[crop_name]
+
+        df = df_2D.loc[df_2D.targetVar == target_var.lower()].copy()
+        if crop_name in df.Crop.unique():
+            dfc = df.loc[df.Crop == crop_name].copy()
+            colors = ['lime','darkgreen','indigo','magenta']
+            for j, model_type in enumerate(dfc.Estimator.unique()):
+                axs.plot(dfc.loc[dfc.Estimator == model_type, 'lead_time'].values, dfc.loc[dfc.Estimator == model_type, 'rRMSE_p'].values, color=colors[j], linewidth=1, marker='o', label=model_type)
+
+
+
     #aggiustare grafico come ML e salvare!!
     axs.set_ylim(0, 50)
     axs.set_ylabel('rRMSEp (%)')
@@ -71,7 +90,8 @@ for crop_name in df_bench['Crop'].unique():
     axs.set_title(crop_name, fontsize=12)
     # axs.set_title(axTilte,  fontsize=12)
     # fig.suptitle(crop_name + ', ' + y_var, fontsize=14, fontweight='bold')
-    axs.legend(frameon=False, loc='upper left', ncol=len(axs.lines))
+    axs.legend(frameon=False, bbox_to_anchor=(1.04, 1), loc="upper left")
+    #axs.legend(frameon=False, loc='upper right') #, ncol=len(axs.lines)
     fn = cst.root_dir / f'data/ML_performances_{crop_name}.png'
     plt.savefig(fn, dpi=450)
     plt.close()
