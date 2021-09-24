@@ -21,7 +21,8 @@ from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling
 from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras import backend as K
-
+import mysrc.constants as cst
+import json
 
 # -----------------------------------------------------------------------
 # ---------------------- Modules
@@ -197,33 +198,57 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
                            epochs=n_epochs,
                            batch_size=batch_size, shuffle=True,
                            validation_data=(X_val, {'out1': ys_val}),
-                           verbose=0, callbacks=callback_list)
-
-    del model
+                           verbose=0, callbacks=callback_list) #evrbose=0, callbacks=callback_list)
+    # 2021 09 24 Model fit results sometimes (due to Optuna assignation of hypers with given data)
+    # in los always equal to NaN (maybe because of exploding gradients, to be checked).
+    # Because of this no model is saved and the program was crashing. Now if it happens we save some info and then we return
+    # Nan. This should end up in a trial statistics that is NaN that is ignored by Optuna
     if os.path.exists(out_model_file) == False:
-        print('architecture_features.py, no model file will generate an error. Printing model_hist')
-        print('************************************************')
-        print(model_hist.history)
-        print("X_train['ts_input'].shape")
-        print(X_train['ts_input'].shape)
-        print("X_train['ts_input'][0,:,:,0]")
-        print(X_train['ts_input'][0, :, :, 0])
-        print("ys_train")
-        print(ys_train)
-        print("n_epochs")
-        print(n_epochs)
-        print("batch_size")
-        print(batch_size)
-        print("X_val['ts_input'].shape")
-        print(X_val['ts_input'].shape)
-        print("X_val['ts_input'][0,:,:,0]")
-        print(X_val['ts_input'][0, :, :, 0])
-        print("ys_val")
-        print(ys_val)
-        print('************************************************')
-    model = load_model(out_model_file)
-    pred = model.predict(x=X_val)
-    return model, pred
+        fn = cst.root_dir / f'model_errors.log'
+        with open(fn, 'a') as f:
+            f.write('\n' + 'architecture_features.py, no model file will generate an error. Printing info')
+            print('************************************************')
+            f.write('\n' + 'history of val_mse')
+            f.write(('\n' + ", ".join(map(str, model_hist.history['val_mse']))))
+            # Data check section (nan and min max)
+            f.write('\n' + "X_train sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(map(str, [X_train['ts_input'].sum(), X_train['ts_input'].min(), X_train['ts_input'].max()]))))
+            f.write('\n' + "ys_train sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(map(str, [ys_train.sum(), ys_train.min(), ys_train.max()]))))
+            f.write('\n'+"X_val sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(map(str, [X_val['ts_input'].sum(), X_val['ts_input'].min(), X_val['ts_input'].max()]))))
+            f.write('\n'+"ys_val sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(map(str, [ys_val.sum(), ys_val.min(), ys_val.max()]))))
+            #hyper check
+            # for l in model.layers:
+            #     print(l)
+            #     print(l.get_config())
+            f.write('\n'+'Hypers suggested by Optuna:')
+            n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
+            hp_dic = {'cn_fc4Xv_units': str(model.layers[1].get_config()['filters']),
+                      'cn kernel_size': str(model.layers[1].get_config()['kernel_size']),
+                      'cn strides (fixed)': str(model.layers[1].get_config()['strides']),
+                      'cn drop out rate:': str(model.layers[4].get_config()['rate']),
+                      'AveragePooling2D pool_size': str(model.layers[5].get_config()['pool_size']),
+                      'AveragePooling2D strides': str(model.layers[5].get_config()['strides']),
+                      'SpatialPyramidPooling2D bins': str(model.layers[10].get_config()['bins']),
+                      'n FC layers before output (nb_fc)': str(int(n_dense_before_output))
+                      }
+            for i in range(int(n_dense_before_output)):
+                hp_dic[str(i) + ' ' + 'fc_units'] = str(model.layers[15 + i * 2].get_config()['units'])
+                hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
+            hp_dic['Fit final mse'] = model_hist.history['val_mse'][-1]
+            f.write('\n')
+            f.write(json.dumps(hp_dic))
+            f.write('\n'+'************************************************')
+            return model, ys_val*np.nan
+
+    else:
+        del model
+        model = load_model(out_model_file)
+        pred = model.predict(x=X_val)
+        return model, pred
+
 
 
 def trainTestModel(model, Xt_train, y_train, X_test, Y_test_onehot, out_model_file, **train_params):

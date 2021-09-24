@@ -48,7 +48,7 @@ python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO -
 # Option 4: Not norm by image, no OHE, Yield
 #nohup python optimise_so_2D_architectures.py --normalisation raw --model 2DCNN_SISO --target yield & process_id=$!
 
-#MM: stop year for the moment, enough..
+#MM: stop here for the moment, enough..
 #-----------------------------------------------------------------------------------------------------------------
 
 # Option 5: Norm by image, OHE, Area

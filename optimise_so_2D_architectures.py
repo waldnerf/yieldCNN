@@ -34,8 +34,8 @@ def objective_2DCNN(trial):
     pyramid_bins_ = trial.suggest_int('pyramid_bin', 1, 4)
     pyramid_bins_ = [[k,k] for k in np.arange(1, pyramid_bins_+1)]
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.1)
-    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
-    nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8)
+    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3]) #as Franz coded afterwards this menas 0, 1, 2 layers
+    nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8) #the additional fc layer will have n, n/2, n/4 units
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     if model_type == '2DCNN_SISO':
@@ -64,7 +64,21 @@ def objective_2DCNN(trial):
                                  nunits_fc=nunits_fc_,
                                  activation='sigmoid',
                                  verbose=False)
-
+    print('Model hypars being tested')
+    n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
+    hp_dic = {'cn_fc4Xv_units': str(model.layers[1].get_config()['filters']),
+              'cn kernel_size': str(model.layers[1].get_config()['kernel_size']),
+              #'cn strides (fixed)': str(model.layers[1].get_config()['strides']),
+              'cn drop out rate:': str(model.layers[4].get_config()['rate']),
+              'AveragePooling2D pool_size': str(model.layers[5].get_config()['pool_size']),
+              'AveragePooling2D strides': str(model.layers[5].get_config()['strides']),
+              'SpatialPyramidPooling2D bins': str(model.layers[10].get_config()['bins']),
+              'n FC layers before output (nb_fc)': str(int(n_dense_before_output))
+              }
+    for i in range(int(n_dense_before_output)):
+        hp_dic[str(i) + ' ' + 'fc_units'] = str(model.layers[15 + i * 2].get_config()['units'])
+        hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
+    print(hp_dic.values())
     # Define output filenames
     fn_fig_val = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_val.png'
     fn_fig_test = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_test.png'
@@ -198,7 +212,7 @@ if __name__ == "__main__":
     n_channels = 4  # -- NDVI, Rad, Rain, Temp
     n_epochs = 70
     batch_size = 128
-    n_trials = 100 #100 TODO: 2 is just for debug
+    n_trials = 100
 
     # ---- Get parameters
     model_type = args.model
@@ -259,7 +273,7 @@ if __name__ == "__main__":
 
 
         # loop through all crops
-        for crop_n in [1,2]:  # range(y.shape[1]): TODO: only process one! (0 - Barley, 1 - Durum, 2- Soft)
+        for crop_n in [1,2]:  # range(y.shape[1]): TODO: now processing the two missing (0 - Barley, 1 - Durum, 2- Soft)
             #clean trial history for a new crop
             trial_history = []
             dir_crop = dir_res / f'crop_{crop_n}'
@@ -287,7 +301,6 @@ if __name__ == "__main__":
 
             # loop by month
             for month in range(1, cst.n_month_analysis+1):
-
                 dir_tgt = dir_crop / f'month_{month}'
                 dir_tgt.mkdir(parents=True, exist_ok=True)
 

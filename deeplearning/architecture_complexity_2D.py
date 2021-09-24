@@ -61,7 +61,7 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
     X = layers.Concatenate()([Xt, Xv])
 
     # -- Output FC layers
-    for add in range(nb_fc - 1):
+    for add in range(nb_fc - 1): #can be zero (no layers)
         X = Dense(nunits_fc//(2^add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
 
