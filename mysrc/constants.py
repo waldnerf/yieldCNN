@@ -19,7 +19,7 @@ if sys.platform == 'win32':
         wandb_project = 'leanyf'
         wandb_entity = 'waldnerf'
     elif getpass.getuser() == 'meronmi':
-        root_dir = Path(r'D:/PY_data/leanyf')
+        root_dir = Path(r'D:/PY_data/leanyf') #test
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
         wandb_entity = 'mmeroni'
