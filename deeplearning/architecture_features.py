@@ -18,11 +18,12 @@ from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization
     Concatenate
 from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, \
     GlobalAveragePooling1D
-from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau
+from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau, TensorBoard
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras import backend as K
 import mysrc.constants as cst
 import json
+import datetime
 
 # -----------------------------------------------------------------------
 # ---------------------- Modules
@@ -192,11 +193,11 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
                   loss={'out1': 'mse'},
                   loss_weights={'out1': 1.},
                   metrics=['mse'])
-
+    model.save_weights(cst.root_dir / 'model.h5')
     model_hist = model.fit(X_train,
                            {'out1': ys_train},
                            epochs=n_epochs,
-                           batch_size=batch_size, shuffle=True,
+                           batch_size=batch_size, shuffle=True, #TODO: put back shuffle=True
                            validation_data=(X_val, {'out1': ys_val}),
                            verbose=0, callbacks=callback_list) #evrbose=0, callbacks=callback_list)
     # 2021 09 24 Model fit results sometimes (due to Optuna assignation of hypers with given data)
@@ -206,7 +207,7 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
     if os.path.exists(out_model_file) == False:
         fn = cst.root_dir / f'model_errors.log'
         with open(fn, 'a') as f:
-            f.write('\n' + 'architecture_features.py, no model file will generate an error. Printing info')
+            f.write('\n' + 'architecture_features.py, no model file will generate an error. Printing info: ' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
             print('************************************************')
             f.write('\n' + 'history of val_mse')
             f.write(('\n' + ", ".join(map(str, model_hist.history['val_mse']))))
@@ -241,7 +242,21 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
             f.write('\n')
             f.write(json.dumps(hp_dic))
             f.write('\n'+'************************************************')
-            return model, ys_val*np.nan
+            #now check some metrics with tensorboard
+        log_dir = cst.root_dir / 'tensorboard_logs' / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        os.makedirs(log_dir, exist_ok=True)
+        tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+        callback_list = [checkpoint, reduce_lr, tensorboard_callback]
+        model.load_weights(cst.root_dir / 'model.h5')
+        model_hist = model.fit(X_train,
+                               {'out1': ys_train},
+                               epochs=n_epochs,
+                               batch_size=batch_size, shuffle=True,
+                               validation_data=(X_val, {'out1': ys_val}),
+                               verbose=2, callbacks=callback_list)
+        # then tensorboard --logdir=D:\PY_data\leanyf\tensorboard_logs\20210927-152409 --host localhost --port 8088
+        # http://localhost:8088
+        return model, ys_val*np.nan
 
     else:
         del model

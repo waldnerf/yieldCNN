@@ -155,28 +155,41 @@ def objective_2DCNN(trial):
                                          np.concatenate([out_details, (np.ones_like(out_details) * test_i)], axis=1)],
                                         axis=0)
 
-        mse_val = mean_squared_error(y_val[:, [crop_n]], y_val_preds, squared=False, multioutput='raw_values')
-        r2_val = r2_score(y_val[:, [crop_n]], y_val_preds)
-        mses_val.append(mse_val)
-        r2s_val.append(r2_val)
-        mse_test = mean_squared_error(y_test[:, [crop_n]], y_test_preds, squared=False, multioutput='raw_values')
-        r2_test = r2_score(y_test[:, [crop_n]], y_test_preds)
-        mses_test.append(mse_test)
-        r2s_test.append(r2_test)
+        # It happens that the trial results in  y_val_preds being nan because model fit failed with given optuna params and data
+        # To avoid rasin nan errors in computation of stats below we handle this here
+        if np.isnan(y_val_preds).any():
+            mses_val.append(np.nan)
+            r2s_val.append(np.nan)
+            mse_test = np.nan
+            r2_test = np.nan
+            mses_test.append(mse_test)
+            r2s_test.append(r2_test)
+            # ---- Optuna pruning
+            trial.report(np.nan, cv_i)  # report mse
+        else:
+            mse_val = mean_squared_error(y_val[:, [crop_n]], y_val_preds, squared=False, multioutput='raw_values')
+            r2_val = r2_score(y_val[:, [crop_n]], y_val_preds)
+            mses_val.append(mse_val)
+            r2s_val.append(r2_val)
+            mse_test = mean_squared_error(y_test[:, [crop_n]], y_test_preds, squared=False, multioutput='raw_values')
+            r2_test = r2_score(y_test[:, [crop_n]], y_test_preds)
+            mses_test.append(mse_test)
+            r2s_test.append(r2_test)
+            # ---- Optuna pruning
+            trial.report(np.mean(r2s_val), cv_i)  # report mse
 
-        # ---- Optuna pruning
-        trial.report(np.mean(r2s_val), cv_i)  # report mse
+
         if trial.should_prune():  # let optuna decide whether to prune
             raise optuna.exceptions.TrialPruned()
 
         # Update counter
         cv_i += 1
 
-    av_rmse_val = np.mean(mses_val)
-    av_r2_val = np.mean(r2s_val)
-    av_rmse_test = np.mean(mses_test)
-
-    plot_val_test_predictions(df_val, df_test, av_rmse_val, r2s_val, av_rmse_test, r2s_test, xlabels, ylabels,
+    if ~np.isnan(y_val_preds).any():
+        av_rmse_val = np.mean(mses_val)
+        av_r2_val = np.mean(r2s_val)
+        av_rmse_test = np.mean(mses_test)
+        plot_val_test_predictions(df_val, df_test, av_rmse_val, r2s_val, av_rmse_test, r2s_test, xlabels, ylabels,
                               filename_val=fn_fig_val, filename_test=fn_fig_test)
 
     # Save CV results
