@@ -30,6 +30,12 @@ from sits import readingsits2D
 import mysrc.constants as cst
 import sits.data_generator as data_generator
 
+# global vars
+N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
+N_EPOCHS = 70
+BATCH_SIZE = 128
+N_TRIALS = 1 # 100 todo testing
+
 # global vars - used in objective_2DCNN
 model_type = None
 Xt = None
@@ -40,8 +46,6 @@ data_augmentation = None
 generator = None
 y = None
 crop_n = None
-n_epochs = None
-batch_size = None
 region_id = None
 xlabels = None
 ylabels = None
@@ -64,13 +68,6 @@ def main():
                         help='Overwrite existing results')
     # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
-
-    # ---- Parameters to set
-    n_channels = 4  # -- NDVI, Rad, Rain, Temp
-    global n_epochs, batch_size
-    n_epochs = 70
-    batch_size = 128
-    n_trials = 100
 
     # ---- Get parameters
     global model_type
@@ -199,7 +196,7 @@ def main():
                         for best_previous_trial in trial_history:
                             study.enqueue_trial(best_previous_trial)
 
-                    study.optimize(objective_2DCNN, n_trials=n_trials)
+                    study.optimize(objective_2DCNN, n_trials=N_TRIALS)
 
                     trial = study.best_trial
                     print('------------------------------------------------')
@@ -224,7 +221,7 @@ def main():
 
                     # Flexible integration for any Python script
                     if args.wandb:
-                        run_wandb(args, month, input_size, trial, da_label, n_trials, fn_asapID2AU, fn_stats90)
+                        run_wandb(args, month, input_size, trial, da_label, fn_asapID2AU, fn_stats90)
 
 
 def objective_2DCNN(trial):
@@ -331,12 +328,12 @@ def objective_2DCNN(trial):
         if model_type == '2DCNN_SISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                           {'ts_input': Xt_val}, ys_val,
-                                          out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
             X_test = {'ts_input': Xt_test}
         elif model_type == '2DCNN_MISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train, 'v_input': Xv_train}, ys_train,
                                           {'ts_input': Xt_val, 'v_input': Xv_val}, ys_val,
-                                          out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
             X_test = {'ts_input': Xt_test, 'v_input': Xv_test}
 
         y_val_preds = transformer_y.inverse_transform(y_val_preds)
@@ -401,7 +398,7 @@ def objective_2DCNN(trial):
     return av_r2_val
 
 
-def run_wandb(args, month, input_size, trial, da_label, n_trials, fn_asapID2AU, fn_stats90):
+def run_wandb(args, month, input_size, trial, da_label, fn_asapID2AU, fn_stats90):
     # 1. Start a W&B run
     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
                group=f'{args.target}C{crop_n}M{month}SZ{input_size}', config=trial.params,
@@ -415,9 +412,9 @@ def run_wandb(args, month, input_size, trial, da_label, n_trials, fn_asapID2AU, 
                          'month': month,
                          'norm': args.normalisation,
                          'target': args.target,
-                         'n_epochs': n_epochs,
-                         'batch_size': batch_size,
-                         'n_trials': n_trials,
+                         'n_epochs': N_EPOCHS,
+                         'batch_size': BATCH_SIZE,
+                         'n_trials': N_TRIALS,
                          'input_size': input_size
                          })
 
