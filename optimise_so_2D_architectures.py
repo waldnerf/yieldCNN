@@ -121,8 +121,7 @@ def main():
 
         # loop through all crops
         global crop_n
-        for crop_n in [1,
-                       2]:  # range(y.shape[1]): TODO: now processing the two missing (0 - Barley, 1 - Durum, 2- Soft)
+        for crop_n in [1, 2]:  # range(y.shape[1]): TODO: now processing the two missing (0 - Barley, 1 - Durum, 2- Soft)
             # clean trial history for a new crop
             trial_history = []
             dir_crop = dir_res / f'crop_{crop_n}'
@@ -220,7 +219,7 @@ def main():
 
                     # Flexible integration for any Python script
                     if args.wandb:
-                        run_wandb(args, month, input_size, trial, da_label, n_trials)
+                        run_wandb(args, month, input_size, trial, da_label, n_trials, fn_asapID2AU, fn_stats90)
 
 
 def objective_2DCNN(trial):
@@ -397,7 +396,7 @@ def objective_2DCNN(trial):
     return av_r2_val
 
 
-def run_wandb(args, month, input_size, trial, da_label, n_trials):
+def run_wandb(args, month, input_size, trial, da_label, n_trials, fn_asapID2AU, fn_stats90):
     # 1. Start a W&B run
     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
                group=f'{args.target}C{crop_n}M{month}SZ{input_size}', config=trial.params,
