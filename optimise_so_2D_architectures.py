@@ -52,17 +52,11 @@ def main():
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
     parser.add_argument('--Xshift', dest='Xshift', action='store_true', default=False, help='Data aug, shiftX')
-    # parser.add_argument('--Xshift', type=bool, default=False, help='Data aug, shiftX')
     parser.add_argument('--Xnoise', dest='Xnoise', action='store_true', default=False, help='Data aug, noiseX')
-    # parser.add_argument('--Xnoise', type=bool, default=False, help='Data aug, noiseX')
     parser.add_argument('--Ynoise', dest='Ynoise', action='store_true', default=False, help='Data aug, noiseY')
-    # parser.add_argument('--Ynoise', type=bool, default=False, help='Data aug, noiseY')
     parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
-    # parser.add_argument('--wandb', type=bool, help='Store results on wandb.io') #default=True,
     parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False,
                         help='Overwrite existing results')
-    # parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
-
     # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
 
@@ -76,11 +70,8 @@ def main():
     # ---- Get parameters
     global model_type
     model_type = args.model
-    target_var = args.target
-    wandb_log = args.wandb
-    if wandb_log:
+    if args.wandb:
         print('Wandb log requested')
-    overwrite = args.overwrite
     da_label = ''
     global data_augmentation
     if args.Xshift or args.Xnoise or args.Ynoise:
@@ -96,10 +87,6 @@ def main():
 
     # ---- Define some paths to data
     fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
-    if args.normalisation == 'norm':
-        hist_norm = 'norm'
-    else:
-        hist_norm = 'raw'
     print("Input file: ", os.path.basename(str(fn_indata)))
 
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
@@ -110,10 +97,10 @@ def main():
         # ---- output files
         dir_out = cst.my_project.params_dir
         dir_out.mkdir(parents=True, exist_ok=True)
-        dir_res = dir_out / f'Archi_{str(model_type)}_{target_var}_{hist_norm}_{input_size}_{da_label}'
+        dir_res = dir_out / f'Archi_{str(model_type)}_{args.target}_{args.normalisation}_{input_size}_{da_label}'
         dir_res.mkdir(parents=True, exist_ok=True)
         global out_model
-        out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
+        out_model = f'archi-{model_type}-{args.target}-{args.normalisation}.h5'
 
         # ---- Downloading (always not normalized)
         Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
@@ -152,11 +139,11 @@ def main():
             yld = yld_full[yields_2_keep, :]
             # ---- Format target variable
             global y, xlabels, ylabels
-            if target_var == 'yield':
+            if args.target == 'yield':
                 y = yld
                 xlabels = 'Predictions (t/ha)'
                 ylabels = 'Observations (t/ha)'
-            elif target_var == 'area':
+            elif args.target == 'area':
                 y = area
                 xlabels = 'Predictions (%)'
                 ylabels = 'Observations (%)'
@@ -177,7 +164,7 @@ def main():
                     generator = data_generator.DG(Xt_nozero, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise,
                                                   Ynoise=args.Ynoise)
 
-                if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
+                if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (args.overwrite is False):
                     pass
                 else:
                     # Clean up directory if incomplete run of if overwrite is True
@@ -194,8 +181,8 @@ def main():
                     print('------------------------------------------------')
                     print('------------------------------------------------')
                     print(f"")
-                    print(f'=> noarchi: {model_type} - normalisation: {hist_norm} - target:'
-                          f' {target_var} - crop: {crop_n} - month: {month} =')
+                    print(f'=> noarchi: {model_type} - normalisation: {args.normalisation} - target:'
+                          f' {args.target} - crop: {crop_n} - month: {month} =')
                     print(f'Training data have shape: {Xt.shape}')
 
                     study = optuna.create_study(direction='maximize',
