@@ -219,48 +219,8 @@ def main():
                     save_best_model(dir_tgt, f'res_{trial.number}')
 
                     # Flexible integration for any Python script
-                    if wandb_log:
-                        # 1. Start a W&B run
-                        wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-                                   group=f'{target_var}C{crop_n}M{month}SZ{input_size}', config=trial.params,
-                                   name=f'{target_var}-{model_type}-C{crop_n}-M{month}-{hist_norm}-{da_label}',
-                                   notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
-                                         f'crop ID {crop_n}.')
-
-                        # 2. Save model inputs and hyperparameters
-                        wandb.config.update({'model_type': model_type,
-                                             'crop_n': crop_n,
-                                             'month': month,
-                                             'norm': hist_norm,
-                                             'target': target_var,
-                                             'n_epochs': n_epochs,
-                                             'batch_size': batch_size,
-                                             'n_trials': n_trials,
-                                             'input_size': input_size
-                                             })
-
-                        # Evaluate best model on test set
-                        fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
-                        res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
-                        # 3. Log metrics over time to visualize performance
-                        wandb.log({"crop_n": crop_n,
-                                   "month": month,
-                                   "R2_p": res_i.R2_p.to_numpy()[0],
-                                   "MAE_p": res_i.MAE_p.to_numpy()[0],
-                                   "rMAE_p": res_i.rMAE_p.to_numpy()[0],
-                                   "ME_p": res_i.ME_p.to_numpy()[0],
-                                   "RMSE_p": res_i.RMSE_p.to_numpy()[0],
-                                   "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
-                                   "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
-                                   "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
-                                   "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
-                                   "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
-                                   "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
-                                   "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
-                                   "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
-                                   })
-
-                        wandb.finish()
+                    if args.wandb:
+                        run_wandb(args, month, input_size, trial, da_label, n_trials)
 
 
 def objective_2DCNN(trial):
@@ -435,6 +395,50 @@ def objective_2DCNN(trial):
     pd.DataFrame(df_out, columns=['ASAP1_ID', 'Year', 'Observed', 'Predicted']).to_csv(fn_cv_test, index=False)
 
     return av_r2_val
+
+
+def run_wandb(args, month, input_size, trial, da_label, n_trials):
+    # 1. Start a W&B run
+    wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
+               group=f'{args.target}C{crop_n}M{month}SZ{input_size}', config=trial.params,
+               name=f'{args.target}-{model_type}-C{crop_n}-M{month}-{args.normalisation}-{da_label}',
+               notes=f'Performance of a 2D CNN model for {args.target} forecasting in Algeria for'
+                     f'crop ID {crop_n}.')
+
+    # 2. Save model inputs and hyperparameters
+    wandb.config.update({'model_type': model_type,
+                         'crop_n': crop_n,
+                         'month': month,
+                         'norm': args.normalisation,
+                         'target': args.target,
+                         'n_epochs': n_epochs,
+                         'batch_size': batch_size,
+                         'n_trials': n_trials,
+                         'input_size': input_size
+                         })
+
+    # Evaluate best model on test set
+    fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
+    res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
+    # 3. Log metrics over time to visualize performance
+    wandb.log({"crop_n": crop_n,
+               "month": month,
+               "R2_p": res_i.R2_p.to_numpy()[0],
+               "MAE_p": res_i.MAE_p.to_numpy()[0],
+               "rMAE_p": res_i.rMAE_p.to_numpy()[0],
+               "ME_p": res_i.ME_p.to_numpy()[0],
+               "RMSE_p": res_i.RMSE_p.to_numpy()[0],
+               "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
+               "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
+               "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
+               "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
+               "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
+               "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
+               "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
+               "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
+               })
+
+    wandb.finish()
 
 
 # -----------------------------------------------------------------------
