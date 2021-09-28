@@ -25,6 +25,257 @@ from sits.readingsits2D import *
 import mysrc.constants as cst
 import sits.data_generator as data_generator
 
+# global vars - used in objective_2DCNN
+model_type = None
+Xt = None
+region_ohe = None
+dir_tgt = None
+groups = None
+data_augmentation = None
+generator = None
+y = None
+crop_n = None
+n_epochs = None
+batch_size = None
+region_id = None
+xlabels = None
+ylabels = None
+out_model = None
+
+
+def main():
+    # ---- Define parser
+    parser = argparse.ArgumentParser(description='Optimise 2D CNN for yield and area forecasting')
+    parser.add_argument('--normalisation', type=str, default='norm', choices=['norm', 'raw'],
+                        help='Should input data be normalised histograms?')
+    parser.add_argument('--model', type=str, default='2DCNN_SISO',
+                        help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
+    parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
+    parser.add_argument('--Xshift', dest='Xshift', action='store_true', default=False, help='Data aug, shiftX')
+    # parser.add_argument('--Xshift', type=bool, default=False, help='Data aug, shiftX')
+    parser.add_argument('--Xnoise', dest='Xnoise', action='store_true', default=False, help='Data aug, noiseX')
+    # parser.add_argument('--Xnoise', type=bool, default=False, help='Data aug, noiseX')
+    parser.add_argument('--Ynoise', dest='Ynoise', action='store_true', default=False, help='Data aug, noiseY')
+    # parser.add_argument('--Ynoise', type=bool, default=False, help='Data aug, noiseY')
+    parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
+    # parser.add_argument('--wandb', type=bool, help='Store results on wandb.io') #default=True,
+    parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False,
+                        help='Overwrite existing results')
+    # parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
+
+    # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
+    args = parser.parse_args()
+
+    # ---- Parameters to set
+    n_channels = 4  # -- NDVI, Rad, Rain, Temp
+    global n_epochs, batch_size
+    n_epochs = 70
+    batch_size = 128
+    n_trials = 100
+
+    # ---- Get parameters
+    global model_type
+    model_type = args.model
+    target_var = args.target
+    wandb_log = args.wandb
+    if wandb_log:
+        print('Wandb log requested')
+    overwrite = args.overwrite
+    da_label = ''
+    global data_augmentation
+    if args.Xshift or args.Xnoise or args.Ynoise:
+        data_augmentation = True
+        if args.Xshift == True:
+            da_label = da_label + 'Xshift'
+        if args.Xnoise == True:
+            da_label = da_label + '_Xnoise'
+        if args.Ynoise == True:
+            da_label = da_label + '_Ynoise'
+    else:
+        data_augmentation = False
+
+    # ---- Define some paths to data
+    fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
+    if args.normalisation == 'norm':
+        hist_norm = 'norm'
+    else:
+        hist_norm = 'raw'
+    print("Input file: ", os.path.basename(str(fn_indata)))
+
+    fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
+    fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
+
+    # for input_size in [32, 48, 64]:
+    for input_size in [64, 32]:
+        # ---- output files
+        dir_out = cst.my_project.params_dir
+        dir_out.mkdir(parents=True, exist_ok=True)
+        dir_res = dir_out / f'Archi_{str(model_type)}_{target_var}_{hist_norm}_{input_size}_{da_label}'
+        dir_res.mkdir(parents=True, exist_ok=True)
+        global out_model
+        out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
+
+        # ---- Downloading (always not normalized)
+        Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
+
+        # M+ original resizing of Franz using tf.image.resize was bit odd as it uses bilinear interp (filling thus zeros)
+        # resize if required (only resize to 32 possible)
+        if input_size != 64:
+            if input_size == 32:
+                Xt_full = Xt_full.reshape(Xt_full.shape[0], -1, 2, Xt_full.shape[-2], Xt_full.shape[-1]).sum(2)
+            else:
+                print("Resizing request is not available")
+                sys.exit()
+
+        if args.normalisation == 'norm':
+            max_per_image = np.max(Xt_full, axis=(1, 2), keepdims=True)
+            Xt_full = Xt_full / max_per_image
+        # M-
+
+        # loop through all crops
+        global crop_n
+        for crop_n in [1,
+                       2]:  # range(y.shape[1]): TODO: now processing the two missing (0 - Barley, 1 - Durum, 2- Soft)
+            # clean trial history for a new crop
+            trial_history = []
+            dir_crop = dir_res / f'crop_{crop_n}'
+            dir_crop.mkdir(parents=True, exist_ok=True)
+
+            # make sure that we do not keep entries with 0 ton/ha yields,
+            yields_2_keep = ~(yld_full[:, crop_n] <= 0)
+            Xt_nozero = Xt_full[yields_2_keep, :, :, :]
+            area = area_full[yields_2_keep, :]
+            global region_id
+            region_id = region_id_full[yields_2_keep]
+            global groups
+            groups = groups_full[yields_2_keep]
+            yld = yld_full[yields_2_keep, :]
+            # ---- Format target variable
+            global y, xlabels, ylabels
+            if target_var == 'yield':
+                y = yld
+                xlabels = 'Predictions (t/ha)'
+                ylabels = 'Observations (t/ha)'
+            elif target_var == 'area':
+                y = area
+                xlabels = 'Predictions (%)'
+                ylabels = 'Observations (%)'
+
+            # ---- Convert region to one hot
+            global region_ohe
+            region_ohe = add_one_hot(region_id)
+
+            # loop by month
+            for month in range(1, cst.n_month_analysis + 1):
+                global dir_tgt
+                dir_tgt = dir_crop / f'month_{month}'
+                dir_tgt.mkdir(parents=True, exist_ok=True)
+
+                if data_augmentation:
+                    # Instantiate a data generator for this crop
+                    global generator
+                    generator = data_generator.DG(Xt_nozero, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise,
+                                                  Ynoise=args.Ynoise)
+
+                if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
+                    pass
+                else:
+                    # Clean up directory if incomplete run of if overwrite is True
+                    rm_tree(dir_tgt)
+                    # data start in first dek of August (cst.first_month_in__raw_data), index 0
+                    # the model uses data from first dek of September (to account for precipitation, field preparation),
+                    # cst.first_month_input_local_year, =1, 1*3, index 3
+                    # first forecast (month 1) is using up to end of Nov, index 11
+                    first = (cst.first_month_input_local_year) * 3
+                    last = (cst.first_month_analysis_local_year + month - 1) * 3  # this is 12
+                    global Xt
+                    Xt = Xt_nozero[:, :, first:last, :]  # this takes 9 elements, from 3 to 11 included
+
+                    print('------------------------------------------------')
+                    print('------------------------------------------------')
+                    print(f"")
+                    print(f'=> noarchi: {model_type} - normalisation: {hist_norm} - target:'
+                          f' {target_var} - crop: {crop_n} - month: {month} =')
+                    print(f'Training data have shape: {Xt.shape}')
+
+                    study = optuna.create_study(direction='maximize',
+                                                sampler=TPESampler(),
+                                                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
+                                                )
+
+                    # Force the sampler to sample at previously best model configuration
+                    if len(trial_history) > 0:
+                        for best_previous_trial in trial_history:
+                            study.enqueue_trial(best_previous_trial)
+
+                    study.optimize(objective_2DCNN, n_trials=n_trials)
+
+                    trial = study.best_trial
+                    print('------------------------------------------------')
+                    print('--------------- Optimisation results -----------')
+                    print('------------------------------------------------')
+                    print("Number of finished trials: ", len(study.trials))
+                    print(f"\n           Best trial ({trial.number})        \n")
+                    print("R2: ", trial.value)
+                    print("Params: ")
+                    for key, value in trial.params.items():
+                        print("{}: {}".format(key, value))
+                    trial_history.append(trial.params)
+
+                    joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
+                    # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
+                    # dumped_study.trials_dataframe()
+                    df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
+                    # fig = optuna.visualization.plot_slice(study)
+                    print('------------------------------------------------')
+
+                    save_best_model(dir_tgt, f'res_{trial.number}')
+
+                    # Flexible integration for any Python script
+                    if wandb_log:
+                        # 1. Start a W&B run
+                        wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
+                                   group=f'{target_var}C{crop_n}M{month}SZ{input_size}', config=trial.params,
+                                   name=f'{target_var}-{model_type}-C{crop_n}-M{month}-{hist_norm}-{da_label}',
+                                   notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
+                                         f'crop ID {crop_n}.')
+
+                        # 2. Save model inputs and hyperparameters
+                        wandb.config.update({'model_type': model_type,
+                                             'crop_n': crop_n,
+                                             'month': month,
+                                             'norm': hist_norm,
+                                             'target': target_var,
+                                             'n_epochs': n_epochs,
+                                             'batch_size': batch_size,
+                                             'n_trials': n_trials,
+                                             'input_size': input_size
+                                             })
+
+                        # Evaluate best model on test set
+                        fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
+                        res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
+                        # 3. Log metrics over time to visualize performance
+                        wandb.log({"crop_n": crop_n,
+                                   "month": month,
+                                   "R2_p": res_i.R2_p.to_numpy()[0],
+                                   "MAE_p": res_i.MAE_p.to_numpy()[0],
+                                   "rMAE_p": res_i.rMAE_p.to_numpy()[0],
+                                   "ME_p": res_i.ME_p.to_numpy()[0],
+                                   "RMSE_p": res_i.RMSE_p.to_numpy()[0],
+                                   "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
+                                   "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
+                                   "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
+                                   "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
+                                   "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
+                                   "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
+                                   "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
+                                   "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
+                                   })
+
+                        wandb.finish()
+
+
 def objective_2DCNN(trial):
     # Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 8, 48, step=4)
@@ -201,222 +452,4 @@ def objective_2DCNN(trial):
 
 # -----------------------------------------------------------------------
 if __name__ == "__main__":
-    # ---- Define parser
-    parser = argparse.ArgumentParser(description='Optimise 2D CNN for yield and area forecasting')
-    parser.add_argument('--normalisation', type=str, default='norm', choices=['norm', 'raw'], help='Should input data be normalised histograms?')
-    parser.add_argument('--model', type=str, default='2DCNN_SISO',
-                        help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
-    parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
-    parser.add_argument('--Xshift', dest='Xshift', action='store_true', default=False, help='Data aug, shiftX')
-    #parser.add_argument('--Xshift', type=bool, default=False, help='Data aug, shiftX')
-    parser.add_argument('--Xnoise', dest='Xnoise', action='store_true', default=False, help='Data aug, noiseX')
-    #parser.add_argument('--Xnoise', type=bool, default=False, help='Data aug, noiseX')
-    parser.add_argument('--Ynoise', dest='Ynoise', action='store_true', default=False, help='Data aug, noiseY')
-    #parser.add_argument('--Ynoise', type=bool, default=False, help='Data aug, noiseY')
-    parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
-    #parser.add_argument('--wandb', type=bool, help='Store results on wandb.io') #default=True,
-    parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False, help='Overwrite existing results')
-    #parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
-
-    # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
-    args = parser.parse_args()
-
-    # ---- Parameters to set
-    n_channels = 4  # -- NDVI, Rad, Rain, Temp
-    n_epochs = 70
-    batch_size = 128
-    n_trials = 100
-
-    # ---- Get parameters
-    model_type = args.model
-    target_var = args.target
-    wandb_log = args.wandb
-    if wandb_log:
-        print('Wandb log requested')
-    overwrite = args.overwrite
-    da_label = ''
-    if args.Xshift or args.Xnoise or args.Ynoise:
-        data_augmentation = True
-        if args.Xshift == True:
-            da_label = da_label + 'Xshift'
-        if args.Xnoise == True:
-            da_label = da_label + '_Xnoise'
-        if args.Ynoise == True:
-            da_label = da_label + '_Ynoise'
-    else:
-        data_augmentation = False
-
-    # ---- Define some paths to data
-    fn_indata = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw.pickle'
-    if args.normalisation == 'norm':
-        hist_norm = 'norm'
-    else:
-        hist_norm = 'raw'
-    print("Input file: ", os.path.basename(str(fn_indata)))
-
-    fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
-    fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
-
-    #for input_size in [32, 48, 64]:
-    for input_size in [64, 32]:
-        # ---- output files
-        dir_out = cst.my_project.params_dir
-        dir_out.mkdir(parents=True, exist_ok=True)
-        dir_res = dir_out / f'Archi_{str(model_type)}_{target_var}_{hist_norm}_{input_size}_{da_label}'
-        dir_res.mkdir(parents=True, exist_ok=True)
-        out_model = f'archi-{model_type}-{target_var}-{hist_norm}.h5'
-
-        # ---- Downloading (always not normalized)
-        Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
-
-
-        # M+ original resizing of Franz using tf.image.resize was bit odd as it uses bilinear interp (filling thus zeros)
-        # resize if required (only resize to 32 possible)
-        if input_size != 64:
-            if input_size == 32:
-                Xt_full = Xt_full.reshape(Xt_full.shape[0], -1, 2, Xt_full.shape[-2], Xt_full.shape[-1]).sum(2)
-            else:
-                print("Resizing request is not available")
-                sys.exit()
-
-        if args.normalisation == 'norm':
-            max_per_image = np.max(Xt_full, axis=(1, 2), keepdims=True)
-            Xt_full = Xt_full / max_per_image
-         # M-
-
-
-        # loop through all crops
-        for crop_n in [1,2]:  # range(y.shape[1]): TODO: now processing the two missing (0 - Barley, 1 - Durum, 2- Soft)
-            #clean trial history for a new crop
-            trial_history = []
-            dir_crop = dir_res / f'crop_{crop_n}'
-            dir_crop.mkdir(parents=True, exist_ok=True)
-
-            # make sure that we do not keep entries with 0 ton/ha yields,
-            yields_2_keep = ~(yld_full[:, crop_n] <= 0)
-            Xt_nozero = Xt_full[yields_2_keep, :, :, :]
-            area = area_full[yields_2_keep, :]
-            region_id = region_id_full[yields_2_keep]
-            groups = groups_full[yields_2_keep]
-            yld = yld_full[yields_2_keep, :]
-            # ---- Format target variable
-            if target_var == 'yield':
-                y = yld
-                xlabels = 'Predictions (t/ha)'
-                ylabels = 'Observations (t/ha)'
-            elif target_var == 'area':
-                y = area
-                xlabels = 'Predictions (%)'
-                ylabels = 'Observations (%)'
-
-            # ---- Convert region to one hot
-            region_ohe = add_one_hot(region_id)
-
-            # loop by month
-            for month in range(1, cst.n_month_analysis+1):
-                dir_tgt = dir_crop / f'month_{month}'
-                dir_tgt.mkdir(parents=True, exist_ok=True)
-
-                if data_augmentation:
-                    # Instantiate a data generator for this crop
-                    generator = data_generator.DG(Xt_nozero, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise,
-                                                  Ynoise=args.Ynoise)
-
-                if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
-                    pass
-                else:
-                    # Clean up directory if incomplete run of if overwrite is True
-                    rm_tree(dir_tgt)
-                    # data start in first dek of August (cst.first_month_in__raw_data), index 0
-                    # the model uses data from first dek of September (to account for precipitation, field preparation),
-                    # cst.first_month_input_local_year, =1, 1*3, index 3
-                    # first forecast (month 1) is using up to end of Nov, index 11
-                    first = (cst.first_month_input_local_year) * 3
-                    last = (cst.first_month_analysis_local_year + month - 1) * 3 #this is 12
-                    Xt = Xt_nozero[:, :, first:last, :] # this takes 9 elements, from 3 to 11 included
-
-                    print('------------------------------------------------')
-                    print('------------------------------------------------')
-                    print(f"")
-                    print(f'=> noarchi: {model_type} - normalisation: {hist_norm} - target:'
-                          f' {target_var} - crop: {crop_n} - month: {month} =')
-                    print(f'Training data have shape: {Xt.shape}')
-
-                    study = optuna.create_study(direction='maximize',
-                                                sampler=TPESampler(),
-                                                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=8)
-                                                )
-
-                    # Force the sampler to sample at previously best model configuration
-                    if len(trial_history) > 0:
-                        for best_previous_trial in trial_history:
-                            study.enqueue_trial(best_previous_trial)
-
-                    study.optimize(objective_2DCNN, n_trials=n_trials)
-
-                    trial = study.best_trial
-                    print('------------------------------------------------')
-                    print('--------------- Optimisation results -----------')
-                    print('------------------------------------------------')
-                    print("Number of finished trials: ", len(study.trials))
-                    print(f"\n           Best trial ({trial.number})        \n")
-                    print("R2: ", trial.value)
-                    print("Params: ")
-                    for key, value in trial.params.items():
-                        print("{}: {}".format(key, value))
-                    trial_history.append(trial.params)
-
-                    joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
-                    # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
-                    # dumped_study.trials_dataframe()
-                    df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
-                    # fig = optuna.visualization.plot_slice(study)
-                    print('------------------------------------------------')
-
-                    save_best_model(dir_tgt, f'res_{trial.number}')
-
-                    # Flexible integration for any Python script
-                    if wandb_log:
-                        # 1. Start a W&B run
-                        wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-                                   group=f'{target_var}C{crop_n}M{month}SZ{input_size}', config=trial.params,
-                                   name=f'{target_var}-{model_type}-C{crop_n}-M{month}-{hist_norm}-{da_label}',
-                                   notes=f'Performance of a 2D CNN model for {target_var} forecasting in Algeria for'
-                                         f'crop ID {crop_n}.')
-
-                        # 2. Save model inputs and hyperparameters
-                        wandb.config.update({'model_type': model_type,
-                                             'crop_n': crop_n,
-                                             'month': month,
-                                             'norm': hist_norm,
-                                             'target': target_var,
-                                             'n_epochs': n_epochs,
-                                             'batch_size': batch_size,
-                                             'n_trials': n_trials,
-                                             'input_size': input_size
-                                             })
-
-                        # Evaluate best model on test set
-                        fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
-                        res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
-                        # 3. Log metrics over time to visualize performance
-                        wandb.log({"crop_n": crop_n,
-                                   "month": month,
-                                   "R2_p": res_i.R2_p.to_numpy()[0],
-                                   "MAE_p": res_i.MAE_p.to_numpy()[0],
-                                   "rMAE_p": res_i.rMAE_p.to_numpy()[0],
-                                   "ME_p": res_i.ME_p.to_numpy()[0],
-                                   "RMSE_p": res_i.RMSE_p.to_numpy()[0],
-                                   "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
-                                   "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
-                                   "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
-                                   "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
-                                   "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
-                                   "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
-                                   "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
-                                   "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
-                                   })
-
-                        wandb.finish()
-
-# EOF
+    main()
