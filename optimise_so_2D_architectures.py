@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+import os
+import sys
+import numpy as np
+import pandas as pd
 import argparse
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
@@ -17,11 +21,12 @@ tf.get_logger().setLevel('ERROR')
 # import tensorflow.python.util.deprecation as deprecation
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
-from deeplearning.architecture_complexity_2D import *
-from outputfiles.plot import *
-from outputfiles.save import *
-from evaluation.model_evaluation import *
-from sits.readingsits2D import *
+from deeplearning.architecture_features import cv_Model
+from deeplearning.architecture_complexity_2D import Archi_2DCNN_MISO, Archi_2DCNN_SISO
+from outputfiles import plot as out_plot
+from outputfiles import save as out_save
+from evaluation import model_evaluation as mod_eval
+from sits import readingsits2D
 import mysrc.constants as cst
 import sits.data_generator as data_generator
 
@@ -95,7 +100,7 @@ def main():
     # for input_size in [32, 48, 64]:
     for input_size in [64, 32]:
         # ---- Downloading (always not normalized)
-        Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
+        Xt_full, area_full, region_id_full, groups_full, yld_full = readingsits2D.data_reader(fn_indata)
 
         # M+ original resizing of Franz using tf.image.resize was bit odd as it uses bilinear interp (filling thus zeros)
         # resize if required (only resize to 32 possible)
@@ -138,7 +143,7 @@ def main():
 
             # ---- Convert region to one hot
             global region_ohe
-            region_ohe = add_one_hot(region_id)
+            region_ohe = readingsits2D.add_one_hot(region_id)
 
             # loop by month
             for month in range(1, cst.n_month_analysis + 1):
@@ -167,7 +172,7 @@ def main():
                     pass
                 else:
                     # Clean up directory if incomplete run of if overwrite is True
-                    rm_tree(dir_tgt)
+                    out_save.rm_tree(dir_tgt)
                     # data start in first dek of August (cst.first_month_in__raw_data), index 0
                     # the model uses data from first dek of September (to account for precipitation, field preparation),
                     # cst.first_month_input_local_year, =1, 1*3, index 3
@@ -215,7 +220,7 @@ def main():
                     # fig = optuna.visualization.plot_slice(study)
                     print('------------------------------------------------')
 
-                    save_best_model(dir_tgt, f'res_{trial.number}')
+                    out_save.save_best_model(dir_tgt, f'res_{trial.number}')
 
                     # Flexible integration for any Python script
                     if args.wandb:
@@ -291,13 +296,13 @@ def objective_2DCNN(trial):
 
         # Create train, val and test sets
         train_indices = [x in train_i for x in groups]
-        Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, train_indices)
+        Xt_train, Xv_train, y_train = readingsits2D.subset_data(Xt, region_ohe, y, train_indices)
         # training data augmentation
         if data_augmentation:
             Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], train_indices)
 
-        Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
-        Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
+        Xt_val, Xv_val, y_val = readingsits2D.subset_data(Xt, region_ohe, y, groups == val_i)
+        Xt_test, Xv_test, y_test = readingsits2D.subset_data(Xt, region_ohe, y, groups == test_i)
 
         # removed, this is not the right way, resampling has now been made upfront in main
         #X_train = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
@@ -307,14 +312,14 @@ def objective_2DCNN(trial):
         # If images are already normalised per region, the following has no effect
         # if not this is a minmax scaling based on the training set.
         # WARNING: if data are normalized by region (and not by image), the following normalisation would have an effect
-        min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
+        min_per_t, max_per_t = readingsits2D.computingMinMax(Xt_train, per=0)
         # Normalise training set
-        Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
+        Xt_train = readingsits2D.normalizingData(Xt_train, min_per_t, max_per_t)
         # print(f'Shape training data: {Xt_train.shape}')
         # Normalise validation set
-        Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
+        Xt_val = readingsits2D.normalizingData(Xt_val, min_per_t, max_per_t)
         # Normalise test set
-        Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
+        Xt_test = readingsits2D.normalizingData(Xt_test, min_per_t, max_per_t)
 
         # Normalise ys
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
@@ -386,7 +391,7 @@ def objective_2DCNN(trial):
         av_rmse_val = np.mean(mses_val)
         av_r2_val = np.mean(r2s_val)
         av_rmse_test = np.mean(mses_test)
-        plot_val_test_predictions(df_val, df_test, av_rmse_val, r2s_val, av_rmse_test, r2s_test, xlabels, ylabels,
+        out_plot.plot_val_test_predictions(df_val, df_test, av_rmse_val, r2s_val, av_rmse_test, r2s_test, xlabels, ylabels,
                               filename_val=fn_fig_val, filename_test=fn_fig_test)
 
     # Save CV results
@@ -418,7 +423,7 @@ def run_wandb(args, month, input_size, trial, da_label, n_trials, fn_asapID2AU, 
 
     # Evaluate best model on test set
     fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
-    res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
+    res_i = mod_eval.model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
     # 3. Log metrics over time to visualize performance
     wandb.log({"crop_n": crop_n,
                "month": month,
