@@ -21,7 +21,7 @@ tf.get_logger().setLevel('ERROR')
 # import tensorflow.python.util.deprecation as deprecation
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
-from deeplearning.architecture_features import cv_Model
+from deeplearning.architecture_cv import cv_Model
 from deeplearning.architecture_complexity_2D import Archi_2DCNN_MISO, Archi_2DCNN_SISO
 from outputfiles import plot as out_plot
 from outputfiles import save as out_save

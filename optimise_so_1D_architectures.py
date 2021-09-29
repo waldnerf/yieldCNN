@@ -18,6 +18,7 @@ random.seed(4)
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 from deeplearning.architecture_complexity_1D import *
+from deeplearning.architecture_cv import *
 from outputfiles.plot import *
 from outputfiles.save import *
 from evaluation.model_evaluation import *

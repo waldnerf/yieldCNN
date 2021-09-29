@@ -10,6 +10,7 @@ import optuna
 import joblib
 
 from deeplearning.architecture_complexity_1D import *
+from deeplearning.architecture_cv import *
 from outputfiles.plot import *
 from outputfiles.save import *
 from outputfiles.evaluation import *
