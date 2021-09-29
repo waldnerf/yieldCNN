@@ -62,7 +62,7 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
 
     # -- Output FC layers
     for add in range(nb_fc - 1): #can be zero (no layers)
-        X = Dense(nunits_fc//(2^add), activation=activation)(X)
+        X = Dense(nunits_fc//pow(2, add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
 
     out1 = Dense(1, activation='relu', name='out1')(X)
@@ -104,7 +104,7 @@ def Archi_2DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
 
     # -- Output FC layers
     for add in range(nb_fc - 1):
-        X = Dense(nunits_fc//(2^add), activation=activation)(X)
+        X = Dense(nunits_fc//pow(2, add), activation=activation)(X)
         X = Dropout(dropout_rate)(X)
 
     out1 = Dense(1, activation='relu', name='out1')(X)
