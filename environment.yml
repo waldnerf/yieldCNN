@@ -16,3 +16,6 @@ dependencies:
     - dill==0.3.4
     - baycomp==1.0.2
     - tensorflow-addons==0.13.0
+    - pandas
+    - IPython
+    - h5py==2.10.0/3.4.0
