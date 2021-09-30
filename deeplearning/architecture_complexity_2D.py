@@ -7,14 +7,12 @@ Multiple inputs: https://www.pyimagesearch.com/2019/02/04/keras-multiple-inputs-
 Multiple outputs: https://github.com/rahul-pande/faces-mtl/blob/master/faces_mtl_age_gender.ipynb
 """
 
-import sys, os
 from deeplearning.architecture_features import *
-import tensorflow.keras
 from tensorflow.keras import layers
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import AveragePooling2D, GlobalMaxPooling2D, GlobalAveragePooling2D, MaxPooling2D
 from tensorflow_addons.layers import SpatialPyramidPooling2D
-from tensorflow.keras import backend as K
 
 
 # -----------------------------------------------------------------------

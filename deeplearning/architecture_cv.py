@@ -4,23 +4,14 @@
 Defining tensorflow.keras training the models
 """
 
-import sys, os
+import os
 import numpy as np
 import time
 import os.path
 
-import tensorflow.keras
-from tensorflow.keras import layers
 from tensorflow.keras import optimizers
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras.layers import Input, Dense, Activation, BatchNormalization, Dropout, Flatten, Lambda, \
-    SpatialDropout1D, \
-    Concatenate
-from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling1D, MaxPooling1D, GlobalMaxPooling1D, \
-    GlobalAveragePooling1D
-from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau, TensorBoard
-from tensorflow.keras.models import Model, load_model
-from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import Callback, ModelCheckpoint, History, ReduceLROnPlateau, TensorBoard, EarlyStopping
+from tensorflow.keras.models import load_model
 import mysrc.constants as cst
 import json
 import datetime

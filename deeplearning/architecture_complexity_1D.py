@@ -12,6 +12,7 @@ import sys, os
 from deeplearning.architecture_features import *
 import tensorflow.keras
 from tensorflow.keras import layers
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import GRU, Bidirectional, LSTM, GlobalAveragePooling1D
 from tensorflow.keras import backend as K
