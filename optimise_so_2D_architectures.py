@@ -34,7 +34,7 @@ import sits.data_generator as data_generator
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 N_EPOCHS = 70
 BATCH_SIZE = 128
-N_TRIALS = 1 # 100 todo testing
+N_TRIALS = 100
 
 # global vars - used in objective_2DCNN
 model_type = None
@@ -236,6 +236,17 @@ def objective_2DCNN(trial):
     nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3]) #as Franz coded afterwards this menas 0, 1, 2 layers
     nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8) #the additional fc layer will have n, n/2, n/4 units
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
+
+    #TODO: remove
+    nbunits_conv_ = 28
+    kernel_size_ = 5
+    strides_ = 5
+    pool_size_ = 4
+    pyramid_bins_ = [[1, 1], [2, 2], [3, 3]]
+    dropout_rate_ = 0.0
+    nb_fc_ = 2
+    nunits_fc_ = 40
+    #TODO
 
     if model_type == '2DCNN_SISO':
         model = Archi_2DCNN_SISO(Xt,

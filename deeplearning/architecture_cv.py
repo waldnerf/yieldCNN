@@ -83,8 +83,8 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
             f.write('\n'+"ys_val sum (finite if not nan there), min, max")
             f.write(('\n' + ", ".join(map(str, [ys_val.sum(), ys_val.min(), ys_val.max()]))))
             #hyper check
-            # for l in model.layers:
-            #     print(l)
+            # for i, l in enumerate(model.layers):
+            #     print(i, l)
             #     print(l.get_config())
             f.write('\n'+'Hypers suggested by Optuna:')
             n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
@@ -94,6 +94,8 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
                       'cn drop out rate:': str(model.layers[4].get_config()['rate']),
                       'AveragePooling2D pool_size': str(model.layers[5].get_config()['pool_size']),
                       'AveragePooling2D strides': str(model.layers[5].get_config()['strides']),
+                      'Input shape': str(model.layers[0].output_shape),
+                      'Output shape before Pyramid': str(model.layers[9].output_shape),
                       'SpatialPyramidPooling2D bins': str(model.layers[10].get_config()['bins']),
                       'n FC layers before output (nb_fc)': str(int(n_dense_before_output))
                       }
@@ -102,8 +104,10 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
                 hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
             hp_dic['Fit final mse'] = model_hist.history['val_mse'][-1]
             f.write('\n')
-            f.write(json.dumps(hp_dic))
-            f.write('\n'+'************************************************')
+            for key, value in hp_dic.items():
+                f.write('%s:%s\n' % (key, value))
+           # f.write(json.dumps(hp_dic))
+            f.write('************************************************')
             #now check some metrics with tensorboard
         log_dir = cst.root_dir / 'tensorboard_logs' / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         os.makedirs(log_dir, exist_ok=True)

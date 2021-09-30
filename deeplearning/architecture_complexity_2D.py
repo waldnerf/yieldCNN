@@ -67,6 +67,10 @@ def Archi_2DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_siz
 
     # Create model.
     model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_CNNw_MISO')
+    if True:
+        print( 'Input shape', str(model.layers[0].output_shape))
+        print('Output shape before Pyramid', str(model.layers[9].output_shape))
+        print('***')
     if verbose:
         model.summary()
     return model
