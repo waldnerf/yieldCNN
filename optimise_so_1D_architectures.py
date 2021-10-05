@@ -53,6 +53,7 @@ def main():
     parser = argparse.ArgumentParser(description='Optimise 1D CNN for yield and area forecasting')
     parser.add_argument('--model', type=str, default='1DCNN_MISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
+    parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
     parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False,
                         help='Overwrite existing results')
@@ -77,7 +78,7 @@ def main():
     dir_res = dir_out / f'Archi_{str(model_type)}'
     dir_res.mkdir(parents=True, exist_ok=True)
     global out_model
-    out_model = f'archi-{model_type}.h5'
+    out_model = f'archi-{model_type}-{args.target}.h5'
 
     # ---- Downloading
     Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
@@ -91,16 +92,21 @@ def main():
         # make sure that we do not keep entries with 0 ton/ha yields,
         yields_2_keep = ~(yld_full[:, crop_n] <= 0)
         Xt_nozero = Xt_full[yields_2_keep, :]
+        area = area_full[yields_2_keep, :]
         global region_id, groups
         region_id = region_id_full[yields_2_keep]
         groups = groups_full[yields_2_keep]
         yld = yld_full[yields_2_keep, :]
         # ---- Format target variable
         global y, xlabels, ylabels
-        target_var = 'yield'
-        y = yld
-        xlabels = 'Predictions (t/ha)'
-        ylabels = 'Observations (t/ha)'
+        if args.target == 'yield':
+            y = yld
+            xlabels = 'Predictions (t/ha)'
+            ylabels = 'Observations (t/ha)'
+        elif args.target == 'area':
+            y = area
+            xlabels = 'Predictions (%)'
+            ylabels = 'Observations (%)'
         # ---- Convert region to one hot
         global region_ohe
         region_ohe = add_one_hot(region_id)
@@ -129,7 +135,7 @@ def main():
                 print('------------------------------------------------')
                 print(f"")
                 print(f'=> noarchi: {model_type}'
-                      f' {target_var} - crop: {crop_n} - month: {month}')
+                      f' {args.target} - crop: {crop_n} - month: {month}')
                 study = optuna.create_study(direction='maximize',
                                             sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
@@ -164,7 +170,7 @@ def main():
 
                 # Flexible integration for any Python script
                 if args.wandb:
-                    run_wandb(target_var, month, trial, fn_asapID2AU, fn_stats90)
+                    run_wandb(args, month, trial, fn_asapID2AU, fn_stats90)
 
 
 def objective_1DCNN(trial):
@@ -300,18 +306,18 @@ def objective_1DCNN(trial):
     return av_r2_val
 
 
-def run_wandb(target_var, month, trial, fn_asapID2AU, fn_stats90):
+def run_wandb(args, month, trial, fn_asapID2AU, fn_stats90):
     # 1. Start a W&B run
     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-               group=f'{target_var} - {crop_n} - {month}', config=trial.params,
-               name=f'{target_var}-{model_type}-{crop_n}-{month}',
-               notes=f'Performance of a 1D CNN model for {target_var} forecasting in Algeria for'
+               group=f'{args.target} - {crop_n} - {month}', config=trial.params,
+               name=f'{args.target}-{model_type}-{crop_n}-{month}',
+               notes=f'Performance of a 1D CNN model for {args.target} forecasting in Algeria for'
                      f'crop ID {crop_n}.')
     # 2. Save model inputs and hyperparameters
     wandb.config.update({'model_type': model_type,
                          'crop_n': crop_n,
                          'month': month,
-                         'target': target_var,
+                         'target': args.target,
                          'n_epochs': N_EPOCHS,
                          'batch_size': BATCH_SIZE,
                          'n_trials': N_TRIALS
