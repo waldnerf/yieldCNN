@@ -72,23 +72,12 @@ def main():
     fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
     fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
 
-    # ---- output files
-    dir_out = cst.my_project.params_dir
-    dir_out.mkdir(parents=True, exist_ok=True)
-    dir_res = dir_out / f'Archi_{str(model_type)}'
-    dir_res.mkdir(parents=True, exist_ok=True)
-    global out_model
-    out_model = f'archi-{model_type}-{args.target}.h5'
-
     # ---- Downloading
     Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
 
     # loop through all crops
     global crop_n
     for crop_n in [0]: # range(y.shape[1]): #!TODO: now only barley
-        dir_crop = dir_res / f'crop_{crop_n}'
-        dir_crop.mkdir(parents=True, exist_ok=True)
-
         # make sure that we do not keep entries with 0 ton/ha yields,
         yields_2_keep = ~(yld_full[:, crop_n] <= 0)
         Xt_nozero = Xt_full[yields_2_keep, :]
@@ -113,6 +102,17 @@ def main():
         trial_history = []
         # loop by month
         for month in range(1, cst.n_month_analysis + 1):
+            # ---- output files and dirs
+            dir_out = cst.my_project.params_dir
+            dir_out.mkdir(parents=True, exist_ok=True)
+            dir_res = dir_out / f'Archi_{str(model_type)}_{args.target}'
+            dir_res.mkdir(parents=True, exist_ok=True)
+            global out_model
+            out_model = f'archi-{model_type}-{args.target}.h5'
+            # crop dirs
+            dir_crop = dir_res / f'crop_{crop_n}'
+            dir_crop.mkdir(parents=True, exist_ok=True)
+            # month dirs
             global dir_tgt
             dir_tgt = dir_crop / f'month_{month}'
             dir_tgt.mkdir(parents=True, exist_ok=True)
