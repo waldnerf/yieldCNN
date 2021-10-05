@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+import os
+import numpy as np
+import pandas as pd
 import argparse
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
@@ -17,12 +20,12 @@ random.seed(4)
 # import tensorflow.python.util.deprecation as deprecation
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
-from deeplearning.architecture_complexity_1D import *
-from deeplearning.architecture_cv import *
-from outputfiles.plot import *
-from outputfiles.save import *
-from evaluation.model_evaluation import *
-from sits.readingsits1D import *
+from deeplearning.architecture_cv import cv_Model
+from deeplearning.architecture_complexity_1D import Archi_1DCNN_MISO, Archi_1DCNN_SISO
+from outputfiles import plot as out_plot
+from outputfiles import save as out_save
+from evaluation import model_evaluation as mod_eval
+from sits import readingsits1D
 import mysrc.constants as cst
 
 # global vars
@@ -73,7 +76,7 @@ def main():
     fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
 
     # ---- Downloading
-    Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
+    Xt_full, area_full, region_id_full, groups_full, yld_full = readingsits1D.data_reader(fn_indata)
 
     # loop through all crops
     global crop_n
@@ -102,7 +105,7 @@ def main():
 
         # ---- Convert region to one hot
         global region_ohe
-        region_ohe = add_one_hot(region_id)
+        region_ohe = readingsits1D.add_one_hot(region_id)
 
         # loop by month
         for month in range(1, cst.n_month_analysis + 1):
@@ -124,7 +127,7 @@ def main():
             if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (args.overwrite is False):
                 pass
             else:
-                rm_tree(dir_tgt)
+                out_save.rm_tree(dir_tgt)
                 indices = list(range(0, Xt_full.shape[1] // N_CHANNELS))
                 #
                 first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
@@ -145,7 +148,7 @@ def main():
                                             sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
-                
+
                 # Force the sampler to sample at previously best model configuration
                 if len(trial_history) > 0:
                     for best_previous_trial in trial_history:
@@ -172,7 +175,7 @@ def main():
                 # fig = optuna.visualization.plot_slice(study)
                 print('------------------------------------------------')
 
-                save_best_model(dir_tgt, f'res_{trial.number}')
+                out_save.save_best_model(dir_tgt, f'res_{trial.number}')
 
                 # Flexible integration for any Python script
                 if args.wandb:
@@ -191,7 +194,7 @@ def objective_1DCNN(trial):
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     if model_type == '1DCNN_SISO':
-        Xt_ = reshape_data(Xt, N_CHANNELS)
+        Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
         model = Archi_1DCNN_SISO(Xt_,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
@@ -204,7 +207,7 @@ def objective_1DCNN(trial):
                                  verbose=False)
 
     elif model_type == '1DCNN_MISO':
-        Xt_ = reshape_data(Xt, N_CHANNELS)
+        Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
         model = Archi_1DCNN_MISO(Xt_,
                                  region_ohe,
                                  nbunits_conv=nbunits_conv_,
@@ -230,20 +233,20 @@ def objective_1DCNN(trial):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
 
-        Xt_train, Xv_train, y_train = subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
-        Xt_val, Xv_val, y_val = subset_data(Xt, region_ohe, y, groups == val_i)
-        Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
+        Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
+        Xt_val, Xv_val, y_val = readingsits1D.subset_data(Xt, region_ohe, y, groups == val_i)
+        Xt_test, Xv_test, y_test = readingsits1D.subset_data(Xt, region_ohe, y, groups == test_i)
 
         # ---- Reshaping data necessary
-        Xt_train = reshape_data(Xt_train, N_CHANNELS)
-        Xt_val = reshape_data(Xt_val, N_CHANNELS)
-        Xt_test = reshape_data(Xt_test, N_CHANNELS)
+        Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
+        Xt_val = readingsits1D.reshape_data(Xt_val, N_CHANNELS)
+        Xt_test = readingsits1D.reshape_data(Xt_test, N_CHANNELS)
 
         # ---- Normalizing the data per band
-        min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
-        Xt_train = normalizingData(Xt_train, min_per_t, max_per_t)
-        Xt_val = normalizingData(Xt_val, min_per_t, max_per_t)
-        Xt_test = normalizingData(Xt_test, min_per_t, max_per_t)
+        min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
+        Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
+        Xt_val = readingsits1D.normalizingData(Xt_val, min_per_t, max_per_t)
+        Xt_test = readingsits1D.normalizingData(Xt_test, min_per_t, max_per_t)
 
         # Normalise ys
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
@@ -302,7 +305,7 @@ def objective_1DCNN(trial):
     av_r2_val = np.mean(r2s_val)
     av_rmse_test = np.mean(mses_test)
 
-    plot_val_test_predictions(df_val, df_test, av_rmse_val, r2s_val, av_rmse_test, r2s_test, xlabels, ylabels,
+    out_plot.plot_val_test_predictions(df_val, df_test, av_rmse_val, r2s_val, av_rmse_test, r2s_test, xlabels, ylabels,
                               filename_val=fn_fig_val, filename_test=fn_fig_test)
 
     # Save CV results
@@ -331,7 +334,7 @@ def run_wandb(args, month, trial, fn_asapID2AU, fn_stats90):
 
     # Evaluate best model on test set
     fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
-    res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
+    res_i = mod_eval.model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
     # 3. Log metrics over time to visualize performance
     wandb.log({"crop_n": crop_n,
                "month": month,
