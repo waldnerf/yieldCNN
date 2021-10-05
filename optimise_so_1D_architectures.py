@@ -53,15 +53,16 @@ def main():
     parser = argparse.ArgumentParser(description='Optimise 1D CNN for yield and area forecasting')
     parser.add_argument('--model', type=str, default='1DCNN_MISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
-    parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
-    parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
+    parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
+    parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False,
+                        help='Overwrite existing results')
     args = parser.parse_args()
 
     # ---- Get parameters
     global model_type
     model_type = args.model
-    wandb_log = args.wandb
-    overwrite = args.overwrite
+    if args.wandb:
+        print('Wandb log requested')
 
     # ---- Define some paths to data
     fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw.csv')
@@ -110,7 +111,7 @@ def main():
             dir_tgt = dir_crop / f'month_{month}'
             dir_tgt.mkdir(parents=True, exist_ok=True)
 
-            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
+            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (args.overwrite is False):
                 pass
             else:
                 rm_tree(dir_tgt)
@@ -162,7 +163,7 @@ def main():
                 save_best_model(dir_tgt, f'res_{trial.number}')
 
                 # Flexible integration for any Python script
-                if wandb_log:
+                if args.wandb:
                     # 1. Start a W&B run
                     wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
                                group=f'{target_var} - {crop_n} - {month}', config=trial.params,
