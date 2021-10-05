@@ -15,6 +15,7 @@ from tensorflow.keras.models import load_model
 import mysrc.constants as cst
 import json
 import datetime
+import global_variables
 
 
 def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_params):
@@ -55,7 +56,12 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
                   loss={'out1': 'mse'},
                   loss_weights={'out1': 1.},
                   metrics=['mse'])
-    model.save_weights(cst.root_dir / 'model.h5')
+    #model.save_weights(cst.root_dir / 'model.h5')
+    if global_variables.init_weights == None:
+        global_variables.init_weights = model.get_weights()
+    else:
+        model.set_weights(global_variables.init_weights)
+
     model_hist = model.fit(X_train,
                            {'out1': ys_train},
                            epochs=n_epochs,
@@ -109,21 +115,20 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, **train_pa
            # f.write(json.dumps(hp_dic))
             f.write('************************************************')
             #now check some metrics with tensorboard
-        log_dir = cst.root_dir / 'tensorboard_logs' / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        os.makedirs(log_dir, exist_ok=True)
-        tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
-        callback_list = [checkpoint, reduce_lr, tensorboard_callback]
-        model.load_weights(cst.root_dir / 'model.h5')
-        model_hist = model.fit(X_train,
-                               {'out1': ys_train},
-                               epochs=n_epochs,
-                               batch_size=batch_size, shuffle=True,
-                               validation_data=(X_val, {'out1': ys_val}),
-                               verbose=2, callbacks=callback_list)
-        # then tensorboard --logdir=D:\PY_data\leanyf\tensorboard_logs\20210927-152409 --host localhost --port 8088
-        # http://localhost:8088
+        # log_dir = cst.root_dir / 'tensorboard_logs' / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        # os.makedirs(log_dir, exist_ok=True)
+        # tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+        # callback_list = [checkpoint, reduce_lr, tensorboard_callback]
+        # model.load_weights(cst.root_dir / 'model.h5')
+        # model_hist = model.fit(X_train,
+        #                        {'out1': ys_train},
+        #                        epochs=n_epochs,
+        #                        batch_size=batch_size, shuffle=True,
+        #                        validation_data=(X_val, {'out1': ys_val}),
+        #                        verbose=2, callbacks=callback_list)
+        # # then tensorboard --logdir=D:\PY_data\leanyf\tensorboard_logs\20210927-152409 --host localhost --port 8088
+        # # http://localhost:8088
         return model, ys_val*np.nan
-
     else:
         del model
         model = load_model(out_model_file)

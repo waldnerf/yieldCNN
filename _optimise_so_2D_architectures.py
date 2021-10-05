@@ -22,14 +22,13 @@ tf.get_logger().setLevel('ERROR')
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 from deeplearning.architecture_cv import cv_Model
-from deeplearning.architecture_complexity_2D import Archi_2DCNN #Archi_2DCNN_MISO, Archi_2DCNN_SISO
+from deeplearning.architecture_complexity_2D import Archi_2DCNN_MISO, Archi_2DCNN_SISO
 from outputfiles import plot as out_plot
 from outputfiles import save as out_save
 from evaluation import model_evaluation as mod_eval
 from sits import readingsits2D
 import mysrc.constants as cst
 import sits.data_generator as data_generator
-import global_variables
 
 # global vars
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
@@ -51,9 +50,6 @@ region_id = None
 xlabels = None
 ylabels = None
 out_model = None
-# to be used here and in architecture_cv
-
-
 
 
 def main():
@@ -119,7 +115,7 @@ def main():
 
         # loop through all crops
         global crop_n
-        for crop_n in [2]:  # range(y.shape[1]): TODO: now processing the two missing (0 - Barley, 1 - Durum, 2- Soft)
+        for crop_n in [1, 2]:  # range(y.shape[1]):
             # clean trial history for a new crop
             trial_history = []
 
@@ -147,15 +143,14 @@ def main():
             region_ohe = readingsits2D.add_one_hot(region_id)
 
             # loop by month
-            for month in [4, 7]: #range(1, cst.n_month_analysis + 1): #TODO put back all: range(1, cst.n_month_analysis + 1)
+            for month in range(1, cst.n_month_analysis + 1):
                 # ---- output files and dirs
                 dir_out = cst.my_project.params_dir
                 dir_out.mkdir(parents=True, exist_ok=True)
                 dir_res = dir_out / f'Archi_{str(model_type)}_{args.target}_{args.normalisation}_{input_size}_{da_label}'
                 dir_res.mkdir(parents=True, exist_ok=True)
                 global out_model
-                #out_model = f'archi-{model_type}-{args.target}-{args.normalisation}.h5'
-                out_model = f'{model_type}-{args.target}-{args.normalisation}_{input_size}_{da_label}.h5'
+                out_model = f'archi-{model_type}-{args.target}-{args.normalisation}.h5'
                 # crop dirs
                 dir_crop = dir_res / f'crop_{crop_n}'
                 dir_crop.mkdir(parents=True, exist_ok=True)
@@ -187,7 +182,7 @@ def main():
                     print('------------------------------------------------')
                     print('------------------------------------------------')
                     print(f"")
-                    print(f'=> archi: {model_type} - normalisation: {args.normalisation} - target:'
+                    print(f'=> noarchi: {model_type} - normalisation: {args.normalisation} - target:'
                           f' {args.target} - crop: {crop_n} - month: {month} =')
                     print(f'Training data have shape: {Xt.shape}')
 
@@ -230,34 +225,18 @@ def main():
 
 
 def objective_2DCNN(trial):
-    # Input dimension
-    Yd = Xt.shape[1]    #64 or 32
-    Xd = Xt.shape[2]    # 9, 12, 15, .., 30
     # Suggest values of the hyperparameters using a trial object.
-
     # n filters in the convolutions & n units in the dense layer after Xv (region Id OHE)
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 8, 48, step=4)
-    # size of convolutions kernels
+    # convolutions kernels
     kernel_size_ = trial.suggest_int('kernel_size', 3, 6)
-    # > using padding "same" the x and y dimension are not changed (64 or 32, n_month*3)
-
-    # size of avg pooling layer between the two convolutions (now using padding "valid", also because using avg)
-    # set max to Xd/3 to avoid over downsampling
-    pool_size_ = trial.suggest_int('pool_size', 1, Xd // 3)               # old Franz comment POOL SIZE Y, and let strides = pool size (//2 on time axis)
+    # size of avg pooling layer between the two convolutions
+    pool_size_ = trial.suggest_int('pool_size', 1, 6)  # old Franz comment POOL SIZE Y, and let strides = pool size (//2 on time axis)
     # strides of avg pooling layer between the two convolutions
-    strides_ = pool_size_ #trial.suggest_int('strides', 1, pool_size_)                         # old Franz comment: MAKE IT POOL SIZE
-
-    # here we change the dimension fo the image, pyramids shall adapt to avoid asking more pyramid than image size
-    # new dimensions:
-    # with padding "valid"
-    #output_shape = math.floor((input_shape - pool_size) / strides) + 1(when input_shape >= pool_size)
-    Xdp = (Xd - pool_size_) // strides_ + 1
-    Ydp = (Yd - pool_size_) // strides_ + 1
-    print(Ydp, Xdp)
-    # pyramid bins (make sure that we do not ask more bins than dimension)
-    max_pyramid_bins = np.min([4, np.min([Xdp, Ydp])])
+    strides_ = trial.suggest_int('strides', 1, 6) # MAKE IT POOL SIZE
+    # pyramid bins
     pyramid_bins_ = trial.suggest_int('pyramid_bin', 1, 4)
-    pyramid_bins_ = [[k,k] for k in np.arange(1, max_pyramid_bins+1)]
+    pyramid_bins_ = [[k,k] for k in np.arange(1, pyramid_bins_+1)]
     # drop ou for conv1, conv2 and final dens layers
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.1)
     # number of final dense layers before output (0,1,2)
@@ -266,8 +245,9 @@ def objective_2DCNN(trial):
     nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8) #the additional fc layer will have n, n/2, n/4 units
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
+
     if model_type == '2DCNN_SISO':
-        model = Archi_2DCNN('SISO',Xt,
+        model = Archi_2DCNN_SISO(Xt,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
                                  strides=strides_,
@@ -280,8 +260,8 @@ def objective_2DCNN(trial):
                                  verbose=False)
 
     elif model_type == '2DCNN_MISO':
-        model = Archi_2DCNN('MISO',Xt,
-                                 Xv=region_ohe,
+        model = Archi_2DCNN_MISO(Xt,
+                                 region_ohe,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
                                  strides=strides_,
@@ -294,37 +274,28 @@ def objective_2DCNN(trial):
                                  verbose=False)
     print('Model hypars being tested')
     n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
-    hp_dic = {'cn_fc4Xv_units': model.layers[1].get_config()['filters'],
-              'cn kernel_size': model.layers[1].get_config()['kernel_size'],
+    hp_dic = {'cn_fc4Xv_units': str(model.layers[1].get_config()['filters']),
+              'cn kernel_size': str(model.layers[1].get_config()['kernel_size']),
               #'cn strides (fixed)': str(model.layers[1].get_config()['strides']),
-              'cn drop out rate': model.layers[4].get_config()['rate'],
-              'AveragePooling2D pool_size': model.layers[5].get_config()['pool_size'],
-              'AveragePooling2D strides': model.layers[5].get_config()['strides'],
-              'SpatialPyramidPooling2D bins': model.layers[10].get_config()['bins'],
-              'n FC layers before output (nb_fc)': int(n_dense_before_output)
+              'cn drop out rate:': str(model.layers[4].get_config()['rate']),
+              'AveragePooling2D pool_size': str(model.layers[5].get_config()['pool_size']),
+              'AveragePooling2D strides': str(model.layers[5].get_config()['strides']),
+              'SpatialPyramidPooling2D bins': str(model.layers[10].get_config()['bins']),
+              'n FC layers before output (nb_fc)': str(int(n_dense_before_output))
               }
-    # for i in range(int(n_dense_before_output)):
-    #     hp_dic[str(i) + ' ' + 'fc_units'] = str(model.layers[15 + i * 2].get_config()['units'])
-    #     hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
-    # print(hp_dic.values())
-    dorWithoutDot = str(hp_dic["cn drop out rate"]).replace('.', '-')
-    hpsString = f'_cnu{hp_dic["cn_fc4Xv_units"]}k{hp_dic["cn kernel_size"][0]}d{dorWithoutDot}' \
-                f'p2Dsz_st{hp_dic["AveragePooling2D pool_size"][0]}_{hp_dic["AveragePooling2D strides"][0]}pyr{max(hp_dic["SpatialPyramidPooling2D bins"])[0]}'
-    # hpsString = '_cn'+hp_dic['cn_fc4Xv_units']+'krnl'+hp_dic['cn kernel_size'][0]+'dor'+hp_dic['cn drop out rate']+'p2Dsz'+hp_dic['AveragePooling2D pool_size'][0] + \
-    #     'p2Dstr'+hp_dic['AveragePooling2D strides'][0]+'pyr'+max(hp_dic['SpatialPyramidPooling2D bins'])[0]
     for i in range(int(n_dense_before_output)):
-        hpsString = hpsString+'dns'+str(0)+'u'+ str(model.layers[15 + i * 2].get_config()['units'])
-    print(hpsString)
+        hp_dic[str(i) + ' ' + 'fc_units'] = str(model.layers[15 + i * 2].get_config()['units'])
+        hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
+    print(hp_dic.values())
     # Define output filenames
-    fn_fig_val = dir_tgt / f'{hpsString}_res_{trial.number}_val.png' #{out_model.split(".h5")[0]}_
-    fn_fig_test = dir_tgt / f'{hpsString}_res_{trial.number}_test.png' #{out_model.split(".h5")[0]}_
-    fn_cv_test = dir_tgt / f'{hpsString}_res_{trial.number}_test.csv' #{out_model.split(".h5")[0]}_
+    fn_fig_val = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_val.png'
+    fn_fig_test = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_test.png'
+    fn_cv_test = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_test.csv'
     out_model_file = dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
     cv_i = 0
-    global_variables.init_weights = None
     for test_i in np.unique(groups):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]

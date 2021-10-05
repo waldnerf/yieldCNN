@@ -22,7 +22,7 @@ def plot_val_test_predictions(df_val_, df_test_, av_rmse_val_, r2s_val_, av_rmse
     plt.close()
 
     plt.plot([axes_min, axes_max], [axes_min, axes_max], '--', color='black')
-    plt.plot(df_test_[:, 0], df_test_[:, 1], '.', color='orange')
+    plt.plot(df_test_[:, 1], df_test_[:, 0], '.', color='orange')
     plt.title(f'RMSE: {np.round(av_rmse_test_, 4)} - R^2 = {np.round(np.mean(r2s_test_), 4)}')
 
     plt.xlabel(xlabels_)

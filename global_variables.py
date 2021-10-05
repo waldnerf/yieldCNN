@@ -1,0 +1,1 @@
+init_weights = None  # Michele, 2021/10/04. Variable to store initial random weights used for all cv runs to avoid information leakege in the loop
