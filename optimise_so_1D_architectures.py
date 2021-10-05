@@ -25,6 +25,183 @@ from evaluation.model_evaluation import *
 from sits.readingsits1D import *
 import mysrc.constants as cst
 
+# global vars
+N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
+N_EPOCHS = 70
+BATCH_SIZE = 128
+N_TRIALS = 100
+
+# global vars - used in objective_2DCNN
+model_type = None
+Xt = None
+region_ohe = None
+dir_tgt = None
+groups = None
+#data_augmentation = None
+#generator = None
+y = None
+crop_n = None
+region_id = None
+xlabels = None
+ylabels = None
+out_model = None
+# to be used here and in architecture_cv
+
+
+def main():
+    # ---- Define parser
+    parser = argparse.ArgumentParser(description='Optimise 1D CNN for yield and area forecasting')
+    parser.add_argument('--model', type=str, default='1DCNN_MISO',
+                        help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
+    parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
+    parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
+    args = parser.parse_args()
+
+    # ---- Get parameters
+    global model_type
+    model_type = args.model
+    wandb_log = args.wandb
+    overwrite = args.overwrite
+
+    # ---- Define some paths to data
+    fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw.csv')
+    print("Input file: ", os.path.basename(str(fn_indata)))
+
+    fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
+    fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
+
+    # ---- output files
+    dir_out = cst.my_project.params_dir
+    dir_out.mkdir(parents=True, exist_ok=True)
+    dir_res = dir_out / f'Archi_{str(model_type)}'
+    dir_res.mkdir(parents=True, exist_ok=True)
+    global out_model
+    out_model = f'archi-{model_type}.h5'
+
+    # ---- Downloading
+    Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
+
+    # loop through all crops
+    global crop_n
+    for crop_n in [0]: # range(y.shape[1]): #!TODO: now only barley
+        dir_crop = dir_res / f'crop_{crop_n}'
+        dir_crop.mkdir(parents=True, exist_ok=True)
+
+        # make sure that we do not keep entries with 0 ton/ha yields,
+        yields_2_keep = ~(yld_full[:, crop_n] <= 0)
+        Xt_nozero = Xt_full[yields_2_keep, :]
+        global region_id, groups
+        region_id = region_id_full[yields_2_keep]
+        groups = groups_full[yields_2_keep]
+        yld = yld_full[yields_2_keep, :]
+        # ---- Format target variable
+        global y, xlabels, ylabels
+        target_var = 'yield'
+        y = yld
+        xlabels = 'Predictions (t/ha)'
+        ylabels = 'Observations (t/ha)'
+        # ---- Convert region to one hot
+        global region_ohe
+        region_ohe = add_one_hot(region_id)
+        trial_history = []
+        # loop by month
+        for month in range(1, cst.n_month_analysis + 1):
+            global dir_tgt
+            dir_tgt = dir_crop / f'month_{month}'
+            dir_tgt.mkdir(parents=True, exist_ok=True)
+
+            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
+                pass
+            else:
+                rm_tree(dir_tgt)
+                indices = list(range(0, Xt_full.shape[1] // N_CHANNELS))
+                #
+                first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
+                # data are thus ordered according to a local year having index = 0 at first_month_in__raw_data
+                first = (cst.first_month_input_local_year) * 3
+                last = (cst.first_month_analysis_local_year + month - 1) * 3
+                msel = [True if ((x >= first) and (x < last)) else False for x in indices] * N_CHANNELS
+                # msel = [True if x < (month * 3) else False for x in indices] * N_CHANNELS
+                global Xt
+                Xt = Xt_nozero[:, msel]
+                print('------------------------------------------------')
+                print('------------------------------------------------')
+                print(f"")
+                print(f'=> noarchi: {model_type}'
+                      f' {target_var} - crop: {crop_n} - month: {month}')
+                study = optuna.create_study(direction='maximize',
+                                            sampler=TPESampler(),
+                                            pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
+                                            )
+                # Force the sampler to sample at previously best model configuration
+                if len(trial_history) > 0:
+                    for best_previous_trial in trial_history:
+                        study.enqueue_trial(best_previous_trial)
+
+                study.optimize(objective_1DCNN, n_trials=N_TRIALS)
+
+                trial = study.best_trial
+                print('------------------------------------------------')
+                print('--------------- Optimisation results -----------')
+                print('------------------------------------------------')
+                print("Number of finished trials: ", len(study.trials))
+                print(f"\n           Best trial ({trial.number})        \n")
+                print("R2: ", trial.value)
+                print("Params: ")
+                for key, value in trial.params.items():
+                    print("{}: {}".format(key, value))
+                trial_history.append(trial.params)
+
+                joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
+                # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
+                # dumped_study.trials_dataframe()
+                df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
+                # fig = optuna.visualization.plot_slice(study)
+                print('------------------------------------------------')
+
+                save_best_model(dir_tgt, f'res_{trial.number}')
+
+                # Flexible integration for any Python script
+                if wandb_log:
+                    # 1. Start a W&B run
+                    wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
+                               group=f'{target_var} - {crop_n} - {month}', config=trial.params,
+                               name=f'{target_var}-{model_type}-{crop_n}-{month}',
+                               notes=f'Performance of a 1D CNN model for {target_var} forecasting in Algeria for'
+                                     f'crop ID {crop_n}.')
+                    # 2. Save model inputs and hyperparameters
+                    wandb.config.update({'model_type': model_type,
+                                         'crop_n': crop_n,
+                                         'month': month,
+                                         'target': target_var,
+                                         'n_epochs': N_EPOCHS,
+                                         'batch_size': BATCH_SIZE,
+                                         'n_trials': N_TRIALS
+                                         })
+
+                    # Evaluate best model on test set
+                    fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
+                    res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
+                    # 3. Log metrics over time to visualize performance
+                    wandb.log({"crop_n": crop_n,
+                               "month": month,
+                               "R2_p": res_i.R2_p.to_numpy()[0],
+                               "MAE_p": res_i.MAE_p.to_numpy()[0],
+                               "rMAE_p": res_i.rMAE_p.to_numpy()[0],
+                               "ME_p": res_i.ME_p.to_numpy()[0],
+                               "RMSE_p": res_i.RMSE_p.to_numpy()[0],
+                               "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
+                               "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
+                               "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
+                               "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
+                               "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
+                               "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
+                               "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
+                               "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
+                               })
+
+                    wandb.finish()
+
 
 def objective_1DCNN(trial):
     # Suggest values of the hyperparameters using a trial object.
@@ -38,7 +215,7 @@ def objective_1DCNN(trial):
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
     if model_type == '1DCNN_SISO':
-        Xt_ = reshape_data(Xt, n_channels)
+        Xt_ = reshape_data(Xt, N_CHANNELS)
         model = Archi_1DCNN_SISO(Xt_,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
@@ -51,7 +228,7 @@ def objective_1DCNN(trial):
                                  verbose=False)
 
     elif model_type == '1DCNN_MISO':
-        Xt_ = reshape_data(Xt, n_channels)
+        Xt_ = reshape_data(Xt, N_CHANNELS)
         model = Archi_1DCNN_MISO(Xt_,
                                  region_ohe,
                                  nbunits_conv=nbunits_conv_,
@@ -82,9 +259,9 @@ def objective_1DCNN(trial):
         Xt_test, Xv_test, y_test = subset_data(Xt, region_ohe, y, groups == test_i)
 
         # ---- Reshaping data necessary
-        Xt_train = reshape_data(Xt_train, n_channels)
-        Xt_val = reshape_data(Xt_val, n_channels)
-        Xt_test = reshape_data(Xt_test, n_channels)
+        Xt_train = reshape_data(Xt_train, N_CHANNELS)
+        Xt_val = reshape_data(Xt_val, N_CHANNELS)
+        Xt_test = reshape_data(Xt_test, N_CHANNELS)
 
         # ---- Normalizing the data per band
         min_per_t, max_per_t = computingMinMax(Xt_train, per=0)
@@ -102,12 +279,12 @@ def objective_1DCNN(trial):
         if model_type == '1DCNN_SISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                           {'ts_input': Xt_val}, ys_val,
-                                          out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
             X_test = {'ts_input': Xt_test}
         elif model_type == '1DCNN_MISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train, 'v_input': Xv_train}, ys_train,
                                           {'ts_input': Xt_val, 'v_input': Xv_val}, ys_val,
-                                          out_model_file, n_epochs=n_epochs, batch_size=batch_size)
+                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
             X_test = {'ts_input': Xt_test, 'v_input': Xv_test}
 
         y_val_preds = transformer_y.inverse_transform(y_val_preds)
@@ -161,155 +338,4 @@ def objective_1DCNN(trial):
 
 # -----------------------------------------------------------------------
 if __name__ == "__main__":
-    # ---- Define parser
-    parser = argparse.ArgumentParser(description='Optimise 1D CNN for yield and area forecasting')
-    parser.add_argument('--model', type=str, default='1DCNN_MISO',
-                        help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
-    parser.add_argument('--wandb', type=bool, default=True, help='Store results on wandb.io')
-    parser.add_argument('--overwrite', type=bool, default=False, help='Overwrite existing results')
-    args = parser.parse_args()
-
-    # ---- Parameters to set
-    n_channels = 4  # -- NDVI, Rad, Rain, Temp
-    n_epochs = 70
-    batch_size = 128
-    n_trials = 100
-
-    # ---- Get parameters
-    model_type = args.model
-    wandb_log = args.wandb
-    overwrite = args.overwrite
-
-    # ---- Define some paths to data
-    fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw.csv')
-    print("Input file: ", os.path.basename(str(fn_indata)))
-
-    fn_asapID2AU = cst.root_dir / "raw_data" / "Algeria_REGION_id.csv"
-    fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
-
-    # ---- output files
-    dir_out = cst.my_project.params_dir
-    dir_out.mkdir(parents=True, exist_ok=True)
-    dir_res = dir_out / f'Archi_{str(model_type)}'
-    dir_res.mkdir(parents=True, exist_ok=True)
-    out_model = f'archi-{model_type}.h5'
-
-    # ---- Downloading
-    Xt_full, area_full, region_id_full, groups_full, yld_full = data_reader(fn_indata)
-
-    # loop through all crops
-    for crop_n in [0]: # range(y.shape[1]): #!TODO: now only barley
-        dir_crop = dir_res / f'crop_{crop_n}'
-        dir_crop.mkdir(parents=True, exist_ok=True)
-
-        # make sure that we do not keep entries with 0 ton/ha yields,
-        yields_2_keep = ~(yld_full[:, crop_n] <= 0)
-        Xt_nozero = Xt_full[yields_2_keep, :]
-        region_id = region_id_full[yields_2_keep]
-        groups = groups_full[yields_2_keep]
-        yld = yld_full[yields_2_keep, :]
-        # ---- Format target variable
-        target_var = 'yield'
-        y = yld
-        xlabels = 'Predictions (t/ha)'
-        ylabels = 'Observations (t/ha)'
-        # ---- Convert region to one hot
-        region_ohe = add_one_hot(region_id)
-        trial_history = []
-        # loop by month
-        for month in range(1, cst.n_month_analysis + 1):
-            dir_tgt = dir_crop / f'month_{month}'
-            dir_tgt.mkdir(parents=True, exist_ok=True)
-
-            if (len([x for x in dir_tgt.glob('best_model')]) != 0) & (overwrite is False):
-                pass
-            else:
-                rm_tree(dir_tgt)
-                indices = list(range(0, Xt_full.shape[1] // n_channels))
-                #
-                first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
-                # data are thus ordered according to a local year having index = 0 at first_month_in__raw_data
-                first = (cst.first_month_input_local_year) * 3
-                last = (cst.first_month_analysis_local_year + month - 1) * 3
-                msel = [True if ((x >= first) and (x < last)) else False for x in indices] * n_channels
-                # msel = [True if x < (month * 3) else False for x in indices] * n_channels
-                Xt = Xt_nozero[:, msel]
-                print('------------------------------------------------')
-                print('------------------------------------------------')
-                print(f"")
-                print(f'=> noarchi: {model_type}'
-                      f' {target_var} - crop: {crop_n} - month: {month}')
-                study = optuna.create_study(direction='maximize',
-                                            sampler=TPESampler(),
-                                            pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
-                                            )
-                # Force the sampler to sample at previously best model configuration
-                if len(trial_history) > 0:
-                    for best_previous_trial in trial_history:
-                        study.enqueue_trial(best_previous_trial)
-
-                study.optimize(objective_1DCNN, n_trials=n_trials)
-
-                trial = study.best_trial
-                print('------------------------------------------------')
-                print('--------------- Optimisation results -----------')
-                print('------------------------------------------------')
-                print("Number of finished trials: ", len(study.trials))
-                print(f"\n           Best trial ({trial.number})        \n")
-                print("R2: ", trial.value)
-                print("Params: ")
-                for key, value in trial.params.items():
-                    print("{}: {}".format(key, value))
-                trial_history.append(trial.params)
-
-                joblib.dump(study, os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.dump'))
-                # dumped_study = joblib.load(os.path.join(cst.my_project.meta_dir, 'study_in_memory_storage.dump'))
-                # dumped_study.trials_dataframe()
-                df = study.trials_dataframe().to_csv(os.path.join(dir_tgt, f'study_{crop_n}_{model_type}.csv'))
-                # fig = optuna.visualization.plot_slice(study)
-                print('------------------------------------------------')
-
-                save_best_model(dir_tgt, f'res_{trial.number}')
-
-                # Flexible integration for any Python script
-                if wandb_log:
-                    # 1. Start a W&B run
-                    wandb.init(project=cst.wandb_project, entity=cst.wandb_entity, reinit=True,
-                               group=f'{target_var} - {crop_n} - {month}', config=trial.params,
-                               name=f'{target_var}-{model_type}-{crop_n}-{month}',
-                               notes=f'Performance of a 1D CNN model for {target_var} forecasting in Algeria for'
-                                     f'crop ID {crop_n}.')
-                    # 2. Save model inputs and hyperparameters
-                    wandb.config.update({'model_type': model_type,
-                                         'crop_n': crop_n,
-                                         'month': month,
-                                         'target': target_var,
-                                         'n_epochs': n_epochs,
-                                         'batch_size': batch_size,
-                                         'n_trials': n_trials
-                                         })
-
-                    # Evaluate best model on test set
-                    fn_csv_best = [x for x in (dir_tgt / 'best_model').glob('*.csv')][0]
-                    res_i = model_evaluation(fn_csv_best, crop_n, month, model_type, fn_asapID2AU, fn_stats90)
-                    # 3. Log metrics over time to visualize performance
-                    wandb.log({"crop_n": crop_n,
-                               "month": month,
-                               "R2_p": res_i.R2_p.to_numpy()[0],
-                               "MAE_p": res_i.MAE_p.to_numpy()[0],
-                               "rMAE_p": res_i.rMAE_p.to_numpy()[0],
-                               "ME_p": res_i.ME_p.to_numpy()[0],
-                               "RMSE_p": res_i.RMSE_p.to_numpy()[0],
-                               "rRMSE_p": res_i.rRMSE_p.to_numpy()[0],
-                               "Country_R2_p": res_i.Country_R2_p.to_numpy()[0],
-                               "Country_MAE_p": res_i.Country_MAE_p.to_numpy()[0],
-                               "Country_ME_p": res_i.Country_ME_p.to_numpy()[0],
-                               "Country_RMSE_p": res_i.Country_RMSE_p.to_numpy()[0],
-                               "Country_rRMSE_p": res_i.Country_rRMSE_p.to_numpy()[0],
-                               "Country_FQ_rRMSE_p": res_i.Country_FQ_rRMSE_p.to_numpy()[0],
-                               "Country_FQ_RMSE_p": res_i.Country_FQ_RMSE_p.to_numpy()[0]
-                               })
-
-                    wandb.finish()
-
-# EOF
+    main()
