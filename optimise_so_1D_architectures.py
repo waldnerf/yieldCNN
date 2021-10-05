@@ -78,6 +78,9 @@ def main():
     # loop through all crops
     global crop_n
     for crop_n in [0]: # range(y.shape[1]): #!TODO: now only barley
+        # clean trial history for a new crop
+        trial_history = []
+
         # make sure that we do not keep entries with 0 ton/ha yields,
         yields_2_keep = ~(yld_full[:, crop_n] <= 0)
         Xt_nozero = Xt_full[yields_2_keep, :]
@@ -96,10 +99,11 @@ def main():
             y = area
             xlabels = 'Predictions (%)'
             ylabels = 'Observations (%)'
+
         # ---- Convert region to one hot
         global region_ohe
         region_ohe = add_one_hot(region_id)
-        trial_history = []
+
         # loop by month
         for month in range(1, cst.n_month_analysis + 1):
             # ---- output files and dirs
@@ -136,10 +140,12 @@ def main():
                 print(f"")
                 print(f'=> noarchi: {model_type}'
                       f' {args.target} - crop: {crop_n} - month: {month}')
+
                 study = optuna.create_study(direction='maximize',
                                             sampler=TPESampler(),
                                             pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=6)
                                             )
+                
                 # Force the sampler to sample at previously best model configuration
                 if len(trial_history) > 0:
                     for best_previous_trial in trial_history:
