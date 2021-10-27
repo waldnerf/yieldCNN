@@ -40,6 +40,7 @@ dict_train_params = {
 # global vars - used in objective_2DCNN
 model_type = None
 Xt = None
+Xtk = None
 region_ohe = None
 #dir_tgt = None
 groups = None
@@ -81,21 +82,25 @@ def main():
 
     # ---- Downloading
     Xt_full, area_full, region_id_full, groups_full, yld_full = readingsits1D.data_reader(fn_indata)
-
+    # Once and for all
+    # Change here format of Xt_full to keras (n_sample, n_deks, n_channels)
+    Xtk_full = readingsits1D.reshape_data(Xt_full, N_CHANNELS)
     # loop through all crops
     global crop_n
     for crop_n in [2]: # range(y.shape[1]): #!TODO: now only 2 soft wheat (0 - Barley, 1 - Durum, 2- Soft)
         # clean trial history for a new crop
         trial_history = []
 
-        # make sure that we do not keep entries with 0 ton/ha yields,
+        # make sure that we do not keep entries with 0 ton/ha yields, each region has yield 0 even if it is not with 90% production
         yields_2_keep = ~(yld_full[:, crop_n] <= 0)
+        #TC
         Xt_nozero = Xt_full[yields_2_keep, :]
+        Xtk_nozero = Xtk_full[yields_2_keep,:,:]
         area = area_full[yields_2_keep, :]
         global region_id, groups
         region_id = region_id_full[yields_2_keep]
         groups = groups_full[yields_2_keep]
-        yld = yld_full[yields_2_keep, :]
+        yld = yld_full[yields_2_keep, :]    #TODO: keep only current crop
         # ---- Format target variable
         global y, xlabels, ylabels
         if args.target == 'yield':
@@ -140,8 +145,11 @@ def main():
                 last = (cst.first_month_analysis_local_year + month - 1) * 3
                 msel = [True if ((x >= first) and (x < last)) else False for x in indices] * N_CHANNELS
                 # msel = [True if x < (month * 3) else False for x in indices] * N_CHANNELS
+                ##TC
                 global Xt
+                global Xtk
                 Xt = Xt_nozero[:, msel]
+                Xtk = Xtk_nozero[:,first:last,:]
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
@@ -194,7 +202,7 @@ def main():
 
 def objective_1DCNN(trial):
     global_variables.trial_number = trial.number
-    Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
+    Xt_=Xtk
     Xd = Xt_.shape[1]  # 9, 12, 15, .., 30
     # Suggest values of the hyperparameters using a trial object.
     # nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
@@ -237,7 +245,6 @@ def objective_1DCNN(trial):
         nunits_fc_ = 16
 
     if model_type == '1DCNN_SISO':
-        Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
         model = Archi_1DCNN('SISO', Xt_,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
@@ -250,7 +257,6 @@ def objective_1DCNN(trial):
                                  verbose=False)
 
     elif model_type == '1DCNN_MISO':
-        Xt_= readingsits1D.reshape_data(Xt, N_CHANNELS)
         model = Archi_1DCNN('MISO', Xt_,
                                  Xv= region_ohe,
                                  nbunits_conv=nbunits_conv_,
@@ -263,7 +269,6 @@ def objective_1DCNN(trial):
                                  activation='sigmoid',
                                  verbose=False)
     elif model_type == 'simple':
-        Xt_= readingsits1D.reshape_data(Xt, N_CHANNELS)
         model = Archi_simple(Xt_,
                              nbunits_conv=nbunits_conv_,
                              kernel_size=kernel_size_,
@@ -321,13 +326,18 @@ def objective_1DCNN(trial):
         global_variables.inner_cv_loop = 0
         # once the test is excluded, all the others are train and val
         train_val_i = [x for x in np.unique(groups) if x != test_i]
-        Xt_test, Xv_test, y_test = readingsits1D.subset_data(Xt, region_ohe, y, groups == test_i)
-        Xt_test = readingsits1D.reshape_data(Xt_test, N_CHANNELS)
+        #TC
+        # Xt_test, Xv_test, y_test = readingsits1D.subset_data(Xt, region_ohe, y, groups == test_i)
+        # Xt_test = readingsits1D.reshape_data(Xt_test, N_CHANNELS)
+        subset_bool = groups == test_i
+        Xt_test, Xv_test, y_test = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
         # a validation loop on all 16 years of val is too long. We reduce to nPerTercile*3,
         # taking 2 from each tercile of the yield data points
         # Here we assign a tercile to each year. As I have several admin units, I have first to compute avg yield by year
         if sampleTerciles:
-            Xt_0, Xv_0, y_0 = readingsits1D.subset_data(Xt, region_ohe, y, groups > 0)  # take all
+            subset_bool = groups > 0 # take all
+            Xt_0, Xv_0, y_0 = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+            #Xt_0, Xv_0, y_0 = readingsits1D.subset_data(Xt, region_ohe, y, groups > 0)  # take all
             df = pd.DataFrame({'group': groups, 'y': y_0[:, crop_n]})
             df = df[df['group'] != test_i]
             df_avg_by_year = df.groupby('group', as_index=False)['y'].mean()
@@ -346,12 +356,16 @@ def objective_1DCNN(trial):
             global_variables.val_group = val_i
             # once the val is left out, all the others are train
             train_i = [x for x in train_val_i if x != val_i]
-            Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
-            Xt_val, Xv_val, y_val = readingsits1D.subset_data(Xt, region_ohe, y, groups == val_i)
-
+            subset_bool =[x in train_i for x in groups]
+            Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+            subset_bool = groups == val_i
+            Xt_val, Xv_val, y_val = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+            #FC
+            #Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
+            #Xt_val, Xv_val, y_val = readingsits1D.subset_data(Xt, region_ohe, y, groups == val_i)
             # ---- Reshaping data necessary
-            Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
-            Xt_val = readingsits1D.reshape_data(Xt_val, N_CHANNELS)
+            #Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
+            #Xt_val = readingsits1D.reshape_data(Xt_val, N_CHANNELS)
 
             # ---- Normalizing the data per band
             min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
@@ -446,10 +460,12 @@ def objective_1DCNN(trial):
 
 
         # Fit the model on training and validation data
-        Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y,
-                                                                [x in train_val_i for x in groups])
+        subset_bool = [x in train_val_i for x in groups]
+        Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+        #TC
+        #Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y,                                                           [x in train_val_i for x in groups])
         # ---- Reshaping data necessary
-        Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
+        #Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
         # ---- Normalizing the data per band
         min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
         Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
