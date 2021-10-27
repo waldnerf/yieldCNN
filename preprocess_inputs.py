@@ -160,6 +160,10 @@ def main(D, fn_features, fn_stats, fn_stats90, fn_out='', save_plot=True):
         df_wide.columns = df_wide.columns.map(lambda x: '{}_{}'.format(*x))
         df_wide.reset_index(inplace=True)
         df_full = df_statsw.merge(df_wide, how='left')
+        for index, row in df_full.iterrows():
+            fig_name = cst.my_project.root_dir / "figures" / f'{row["AU_name"]}_{row["Year"]}_raw_1Dinputs.png'
+            plot_1D_inputs_by_region(row, fig_name)
+
         if fn_out != '':
             df_full.to_csv(Path(fn_out).with_suffix('.csv'), index=False)
             with open(Path(fn_out).with_suffix('.pickle'), 'wb') as f:
@@ -217,7 +221,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Input reader')
     parser.add_argument('--D', type=int, default=1,
                         help='Dimension of inputs, can be 1D time series or 2D histograms')
-    parser.add_argument('--saveplot', type=bool, default=False,
+    parser.add_argument('--saveplot', type=bool, default=True,
                         help='Save the plots')
     args = parser.parse_args()
     # ---- Get parameters
@@ -232,7 +236,7 @@ if __name__ == "__main__":
 
     if D == 1:
         fn_features = rdata_dir / f'{cst.target}_ASAP_data.csv'
-        fn_out = cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw'#.csv' #TODO: use nicer names
+        fn_out = cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw'#.csv'
     elif D == 2:
         fn_features = rdata_dir / f'{cst.target}_ASAP_2d_data_v3.csv'  # Algeria_ASAP_2d_data_v3
         fn_out = cst.my_project.data_dir / f'{cst.target}_full_2d_dataset_raw'#.pickle'

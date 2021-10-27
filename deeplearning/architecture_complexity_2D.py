@@ -72,7 +72,7 @@ def Archi_2DCNN(archi_type, Xt, Xv=None, nbunits_conv=10, kernel_size=3, strides
 
     # Create model
     if archi_type == 'MISO':
-        model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_2CNN_MISO')
+        model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_2DCNN_MISO')
     elif archi_type == 'SISO':
         model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_2DCNN_SISO')
 

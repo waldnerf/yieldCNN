@@ -11,6 +11,7 @@ from optuna.samplers import TPESampler
 import joblib
 import random
 import wandb
+import global_variables
 
 random.seed(4)
 
@@ -21,18 +22,27 @@ random.seed(4)
 # deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 from deeplearning.architecture_cv import cv_Model
-from deeplearning.architecture_complexity_1D import Archi_1DCNN_MISO, Archi_1DCNN_SISO
+from deeplearning.architecture_complexity_1D import Archi_1DCNN, Archi_simple#Archi_1DCNN_MISO, Archi_1DCNN_SISO
 from outputfiles import plot as out_plot
 from outputfiles import save as out_save
 from evaluation import model_evaluation as mod_eval
-from sits import readingsits1D
+from sits import readingsits1D, common_functions_1D2D
 import mysrc.constants as cst
 
 # global vars
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
-N_EPOCHS = 70
-BATCH_SIZE = 128
-N_TRIALS = 100
+# N_EPOCHS = 70
+# BATCH_SIZE = 128
+# N_TRIALS = 100
+dict_train_params = {
+    'N_EPOCHS': 100, #70,
+    'BATCH_SIZE': 128, #128
+    'N_TRIALS': 100,
+    'lr': 0.01, #0.001 is Adam default
+    'beta_1': 0.9, #all defaults
+    'beta_2': 0.999,
+    'decay':  0.01
+}
 
 # global vars - used in objective_2DCNN
 model_type = None
@@ -80,7 +90,7 @@ def main():
 
     # loop through all crops
     global crop_n
-    for crop_n in [0]: # range(y.shape[1]): #!TODO: now only barley
+    for crop_n in [2]: # range(y.shape[1]): #!TODO: now only 2 soft wheat (0 - Barley, 1 - Durum, 2- Soft)
         # clean trial history for a new crop
         trial_history = []
 
@@ -105,17 +115,17 @@ def main():
 
         # ---- Convert region to one hot
         global region_ohe
-        region_ohe = readingsits1D.add_one_hot(region_id)
+        region_ohe = common_functions_1D2D.add_one_hot(region_id)
 
         # loop by month
-        for month in range(1, cst.n_month_analysis + 1):
+        for month in [7,4]: #TODO put back to all -> range(1, cst.n_month_analysis + 1)
             # ---- output files and dirs
             dir_out = cst.my_project.params_dir
             dir_out.mkdir(parents=True, exist_ok=True)
             dir_res = dir_out / f'Archi_{str(model_type)}_{args.target}'
             dir_res.mkdir(parents=True, exist_ok=True)
             global out_model
-            out_model = f'archi-{model_type}-{args.target}.h5'
+            out_model = f'{model_type}-{args.target}.h5'
             # crop dirs
             dir_crop = dir_res / f'crop_{crop_n}'
             dir_crop.mkdir(parents=True, exist_ok=True)
@@ -154,7 +164,7 @@ def main():
                     for best_previous_trial in trial_history:
                         study.enqueue_trial(best_previous_trial)
 
-                study.optimize(objective_1DCNN, n_trials=N_TRIALS)
+                study.optimize(objective_1DCNN, n_trials=dict_train_params['N_TRIALS'])
 
                 trial = study.best_trial
                 print('------------------------------------------------')
@@ -183,19 +193,30 @@ def main():
 
 
 def objective_1DCNN(trial):
+    Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
+    Xd = Xt_.shape[1]  # 9, 12, 15, .., 30
     # Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
-    kernel_size_ = trial.suggest_int('kernel_size', 2, 5)
-    strides_ = trial.suggest_int('strides', 2, 5)
-    pool_size_ = trial.suggest_int('pool_size', 1, 5)
+    kernel_size_ = trial.suggest_int('kernel_size', 3, 6)
+    pool_size_ = trial.suggest_int('pool_size', 1, Xd//3) #should we fix it at 3, monthly pooling (with max)
+    strides_ = pool_size_
     dropout_rate_ = trial.suggest_float('dropout_rate', 0, 0.2, step=0.05)
-    nb_fc_ = trial.suggest_categorical('nb_fc', [1, 2, 3])
-    nunits_fc_ = trial.suggest_categorical('funits_fc', [16, 32, 64, 128])
+    nb_fc_ = trial.suggest_categorical('nb_fc', [0, 1, 2])
+    nunits_fc_ = trial.suggest_int('funits_fc', 16, 64, step=8)
+    #nunits_fc_ = trial.suggest_categorical('funits_fc', [16, 32, 64, 128])
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
+    if True: #TODO remove
+        nbunits_conv_ = 10
+        kernel_size_ = 4
+        pool_size_ = 3
+        strides_ = pool_size_ #trial.suggest_int('strides', 2, 5)
+        dropout_rate_ = 0.0
+        nb_fc_ = 0
+        nunits_fc_ = 16
 
     if model_type == '1DCNN_SISO':
         Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
-        model = Archi_1DCNN_SISO(Xt_,
+        model = Archi_1DCNN('SISO', Xt_,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
                                  strides=strides_,
@@ -207,9 +228,9 @@ def objective_1DCNN(trial):
                                  verbose=False)
 
     elif model_type == '1DCNN_MISO':
-        Xt_ = readingsits1D.reshape_data(Xt, N_CHANNELS)
-        model = Archi_1DCNN_MISO(Xt_,
-                                 region_ohe,
+        Xt_= readingsits1D.reshape_data(Xt, N_CHANNELS)
+        model = Archi_1DCNN('MISO', Xt_,
+                                 Xv= region_ohe,
                                  nbunits_conv=nbunits_conv_,
                                  kernel_size=kernel_size_,
                                  strides=strides_,
@@ -219,19 +240,54 @@ def objective_1DCNN(trial):
                                  nunits_fc=nunits_fc_,
                                  activation='sigmoid',
                                  verbose=False)
+    elif model_type == 'simple':
+        Xt_= readingsits1D.reshape_data(Xt, N_CHANNELS)
+        model = Archi_simple(Xt_,
+                             nbunits_conv=nbunits_conv_,
+                             kernel_size=kernel_size_,
+                             strides=strides_,
+                             pool_size=pool_size_,
+                             dropout_rate=dropout_rate_,
+                             nb_fc=nb_fc_,
+                             nunits_fc=nunits_fc_,
+                             activation='sigmoid',
+                             verbose=False)
+        hpsString = 'simple'
 
+    if model_type != 'simple':
+        print('Model hypars being tested')
+        n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
+        hp_dic = {'cn_fc4Xv_units': model.layers[1].get_config()['filters'],
+                  'cn kernel_size': model.layers[1].get_config()['kernel_size'],
+                  # 'cn strides (fixed)': str(model.layers[1].get_config()['strides']),
+                  'cn drop out rate': model.layers[4].get_config()['rate'],
+                  'AveragePooling2D pool_size': model.layers[5].get_config()['pool_size'],
+                  'AveragePooling2D strides': model.layers[5].get_config()['strides'],
+                  'n FC layers before output (nb_fc)': int(n_dense_before_output)
+                  }
+        dorWithoutDot = str(hp_dic["cn drop out rate"]).replace('.', '-')
+        hpsString = f'cnu{hp_dic["cn_fc4Xv_units"]}k{hp_dic["cn kernel_size"][0]}d{dorWithoutDot}' \
+                    f'p2Dsz_st{hp_dic["AveragePooling2D pool_size"][0]}_{hp_dic["AveragePooling2D strides"][0]}'
+        for i in range(int(n_dense_before_output)):
+            if i == 0:
+                hpsString = hpsString + 'dns' + str(model.layers[15 + i * 2].get_config()['units'])
+            else:
+                hpsString = hpsString + '-' + str(model.layers[15 + i * 2].get_config()['units'])
+    print(hpsString)
     # Define output filenames
-    fn_fig_val = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_val.png'
-    fn_fig_test = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_test.png'
-    fn_cv_test = dir_tgt / f'{out_model.split(".h5")[0]}_res_{trial.number}_test.csv'
+    fn_fig_val = dir_tgt / f'{hpsString}_res_{trial.number}_val.png'
+    fn_fig_test = dir_tgt / f'{hpsString}_res_{trial.number}_test.png'
+    fn_cv_test = dir_tgt / f'{hpsString}_res_{trial.number}_test.csv'
     out_model_file = dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
     mses_val, r2s_val, mses_test, r2s_test = [], [], [], []
     df_val, df_test, df_details = None, None, None
-    cv_i = 0
+    global_variables.inner_cv_loop = 0
+    global_variables.init_weights = None
     for test_i in np.unique(groups):
         val_i = random.choice([x for x in np.unique(groups) if x != test_i])
         train_i = [x for x in np.unique(groups) if x != val_i and x != test_i]
+
 
         Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
         Xt_val, Xv_val, y_val = readingsits1D.subset_data(Xt, region_ohe, y, groups == val_i)
@@ -248,24 +304,45 @@ def objective_1DCNN(trial):
         Xt_val = readingsits1D.normalizingData(Xt_val, min_per_t, max_per_t)
         Xt_test = readingsits1D.normalizingData(Xt_test, min_per_t, max_per_t)
 
+
         # Normalise ys
         transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
         ys_train = transformer_y.transform(y_train[:, [crop_n]])
         ys_val = transformer_y.transform(y_val[:, [crop_n]])
         #ys_test = transformer_y.transform(y_test[:, [crop_n]])
 
+        # TODO remove only one sample, should be learned by hart
+        if False:
+            idx = range(2)
+            Xt_train = Xt_train[idx, :, :].reshape(len(idx), -1, 4)
+            Xt_val = Xt_val[idx, :, :].reshape(len(idx), -1, 4)
+            ys_train = ys_train[idx,:].reshape(len(idx),-1)
+            ys_val = ys_val[idx, :].reshape(len(idx), -1)
+            Xv_train = Xv_train[idx,:].reshape(len(idx),-1)
+            Xv_val = Xv_val[idx,:].reshape(len(idx),-1)
         # We compile our model with a sampled learning rate.
         if model_type == '1DCNN_SISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                           {'ts_input': Xt_val}, ys_val,
-                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
+                                          out_model_file,  n_epochs=dict_train_params['N_EPOCHS'], batch_size=dict_train_params['BATCH_SIZE'],
+                                          learning_rate=dict_train_params['lr'], beta_1=dict_train_params['beta_1'],
+                                          beta_2=dict_train_params['beta_2'], decay=dict_train_params['decay'])
             X_test = {'ts_input': Xt_test}
         elif model_type == '1DCNN_MISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train, 'v_input': Xv_train}, ys_train,
                                           {'ts_input': Xt_val, 'v_input': Xv_val}, ys_val,
-                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
+                                          out_model_file,  n_epochs=dict_train_params['N_EPOCHS'], batch_size=dict_train_params['BATCH_SIZE'],
+                                          learning_rate=dict_train_params['lr'], beta_1=dict_train_params['beta_1'],
+                                          beta_2=dict_train_params['beta_2'], decay=dict_train_params['decay'])
             X_test = {'ts_input': Xt_test, 'v_input': Xv_test}
-
+        elif model_type == 'simple':
+            model, y_val_preds = cv_Model(model, {'ts_input': Xt_train}, ys_train,
+                                          {'ts_input': Xt_val}, ys_val,
+                                          out_model_file, n_epochs=dict_train_params['N_EPOCHS'],
+                                          batch_size=dict_train_params['BATCH_SIZE'],
+                                          learning_rate=dict_train_params['lr'], beta_1=dict_train_params['beta_1'],
+                                          beta_2=dict_train_params['beta_2'], decay=dict_train_params['decay'])
+            X_test = {'ts_input': Xt_test}
         y_val_preds = transformer_y.inverse_transform(y_val_preds)
         out_val = np.concatenate([y_val[:, [crop_n]], y_val_preds], axis=1)
 
@@ -294,12 +371,12 @@ def objective_1DCNN(trial):
         r2s_test.append(r2_test)
 
         # ---- Optuna pruning
-        trial.report(np.mean(r2s_val), cv_i)  # report mse
+        trial.report(np.mean(r2s_val), global_variables.inner_cv_loop)  # report mse
         if trial.should_prune():  # let optuna decide whether to prune
             raise optuna.exceptions.TrialPruned()
 
         # Update counter
-        cv_i += 1
+        global_variables.inner_cv_loop += 1
 
     av_rmse_val = np.mean(mses_val)
     av_r2_val = np.mean(r2s_val)
@@ -327,9 +404,9 @@ def run_wandb(args, month, trial, fn_asapID2AU, fn_stats90):
                          'crop_n': crop_n,
                          'month': month,
                          'target': args.target,
-                         'n_epochs': N_EPOCHS,
-                         'batch_size': BATCH_SIZE,
-                         'n_trials': N_TRIALS
+                         'n_epochs': dict_train_params['N_EPOCHS'],
+                         'batch_size': dict_train_params['BATCH_SIZE'],
+                         'n_trials': dict_train_params['N_TRIALS'],
                          })
 
     # Evaluate best model on test set

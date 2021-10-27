@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import seaborn as sns
 
 
 def plot_val_test_predictions(df_val_, df_test_, av_rmse_val_, r2s_val_, av_rmse_test_, r2s_test_,
@@ -23,6 +24,48 @@ def plot_val_test_predictions(df_val_, df_test_, av_rmse_val_, r2s_val_, av_rmse
 
     plt.plot([axes_min, axes_max], [axes_min, axes_max], '--', color='black')
     plt.plot(df_test_[:, 1], df_test_[:, 0], '.', color='orange')
+    plt.title(f'RMSE: {np.round(av_rmse_test_, 4)} - R^2 = {np.round(np.mean(r2s_test_), 4)}')
+
+    plt.xlabel(xlabels_)
+    plt.ylabel(ylabels_)
+    plt.xlim(axes_min, axes_max)
+    plt.ylim(axes_min, axes_max)
+
+    if filename_test != '':
+        plt.savefig(filename_test)
+    plt.close()
+
+
+def plot_val_test_predictions_with_details(df_val_, df_test_, av_rmse_val_, r2s_val_, av_rmse_test_, r2s_test_,
+                              xlabels_, ylabels_, df_details_, filename_val='', filename_test=''):
+    axes_min = np.floor(np.min(df_val_[:, 0]))
+    axes_max = np.ceil(np.max(df_val_[:, 0]))
+    au = df_details_[:,0]
+    years = df_details_[:,1]
+    plt.plot([axes_min, 5], [axes_min, 5], '-', color='black')
+
+    plt.plot(df_val_[:, 1], df_val_[:, 0], '.')
+    plt.title(f'RMSE: {np.round(av_rmse_val_, 4)} - R^2 = {np.round(np.mean(r2s_val_), 4)}')
+
+    plt.xlabel(xlabels_)
+    plt.ylabel(ylabels_)
+    plt.xlim(axes_min, axes_max)
+    plt.ylim(axes_min, axes_max)
+
+    if filename_val != '':
+        plt.savefig(filename_val)
+    plt.close()
+
+    plt.plot([axes_min, axes_max], [axes_min, axes_max], '--', color='black')
+    #plt.plot(df_test_[:, 1], df_test_[:, 0], '.', color='orange')
+    clrplt = sns.color_palette("husl", len(np.unique(au)))
+    g = sns.scatterplot(x=df_test_[:, 1], y=df_test_[:, 0], hue=au, style=years,
+                     palette=clrplt, legend='full')#palette="Spectral", legend='full')
+    # resize to accomodat legend
+    box = g.get_position()
+    g.set_position([box.x0, box.y0, box.width * 0.7, box.height])
+    g.legend(loc='upper left', bbox_to_anchor=(1, 1.1), ncol=2)
+
     plt.title(f'RMSE: {np.round(av_rmse_test_, 4)} - R^2 = {np.round(np.mean(r2s_test_), 4)}')
 
     plt.xlabel(xlabels_)
@@ -121,6 +164,25 @@ def plot_2D_inputs_by_region(hist, variables, title, fig_name=None, _figsize=(16
     if fig_name is not None:
         plt.savefig(fig_name)
 
+def plot_1D_inputs_by_region(row, fig_name=None, _figsize=(16.5, 5)):
+
+
+    vars = ['NDVI', 'rad', 'rainfall', 'temperature']
+    fig, axs = plt.subplots(1, 4, figsize=_figsize)
+    clr = ['Green', 'Purple', 'Blue', 'Red']
+    for col in range(len(clr)):
+        ax = axs[col]
+        plt.sca(ax)
+        y = row.filter(like=vars[col], axis=0).values
+        plt.plot(y, color=clr[col])
+
+        ax.set_title(vars[col])
+
+    plt.tight_layout()
+
+    if fig_name is not None:
+        plt.savefig(fig_name)
+        plt.close()
 
 #
 

@@ -61,23 +61,6 @@ def data_reader(name_file):
 
 
 # -----------------------------------------------------------------------
-def add_one_hot(regions):
-    """
-        Add one hot encoded region information
-        INPUT:
-            -regions: region ID
-        OUTPUT:
-            -new_X: corresponding one hot encoded values
-    """
-    new_X = np.zeros_like(regions)
-    cnt = 0
-    for r in np.unique(regions):
-        new_X[regions == r] = cnt
-        cnt += 1
-    new_X = to_categorical(new_X, dtype="uint8")
-    return new_X
-
-
 def subset_data(Xt, region_ohe, y, subset_bool):
     return Xt[subset_bool, :, :, :], region_ohe[subset_bool, :], y[subset_bool]
 

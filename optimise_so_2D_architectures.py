@@ -26,16 +26,26 @@ from deeplearning.architecture_complexity_2D import Archi_2DCNN #Archi_2DCNN_MIS
 from outputfiles import plot as out_plot
 from outputfiles import save as out_save
 from evaluation import model_evaluation as mod_eval
-from sits import readingsits2D
+from sits import readingsits2D, common_functions_1D2D
 import mysrc.constants as cst
 import sits.data_generator as data_generator
 import global_variables
 
+
 # global vars
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
-N_EPOCHS = 70
-BATCH_SIZE = 128
-N_TRIALS = 100
+# N_EPOCHS = 70
+# BATCH_SIZE = 128
+# N_TRIALS = 100
+dict_train_params = {
+    'N_EPOCHS': 70,
+    'BATCH_SIZE': 128, #128
+    'N_TRIALS': 100,
+    'lr': 0.001, #0.001 is Adam default
+    'beta_1': 0.9, #all defaults
+    'beta_2': 0.999,
+    'decay':  0.01
+}
 
 # global vars - used in objective_2DCNN
 model_type = None
@@ -70,7 +80,6 @@ def main():
     parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False,
                         help='Overwrite existing results')
-    # parser.add_argument('data augmentation', type=int, default='+', help='an integer for the accumulator')
     args = parser.parse_args()
 
     # ---- Get parameters
@@ -144,7 +153,7 @@ def main():
 
             # ---- Convert region to one hot
             global region_ohe
-            region_ohe = readingsits2D.add_one_hot(region_id)
+            region_ohe = common_functions_1D2D.add_one_hot(region_id)
 
             # loop by month
             for month in [4, 7]: #range(1, cst.n_month_analysis + 1): #TODO put back all: range(1, cst.n_month_analysis + 1)
@@ -201,7 +210,7 @@ def main():
                         for best_previous_trial in trial_history:
                             study.enqueue_trial(best_previous_trial)
 
-                    study.optimize(objective_2DCNN, n_trials=N_TRIALS)
+                    study.optimize(objective_2DCNN, n_trials=dict_train_params['N_TRIALS'])
 
                     trial = study.best_trial
                     print('------------------------------------------------')
@@ -253,7 +262,7 @@ def objective_2DCNN(trial):
     #output_shape = math.floor((input_shape - pool_size) / strides) + 1(when input_shape >= pool_size)
     Xdp = (Xd - pool_size_) // strides_ + 1
     Ydp = (Yd - pool_size_) // strides_ + 1
-    print(Ydp, Xdp)
+    print('Dims after 2D pooling', Ydp, Xdp)
     # pyramid bins (make sure that we do not ask more bins than dimension)
     max_pyramid_bins = np.min([4, np.min([Xdp, Ydp])])
     pyramid_bins_ = trial.suggest_int('pyramid_bin', 1, 4)
@@ -308,12 +317,15 @@ def objective_2DCNN(trial):
     #     hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
     # print(hp_dic.values())
     dorWithoutDot = str(hp_dic["cn drop out rate"]).replace('.', '-')
-    hpsString = f'_cnu{hp_dic["cn_fc4Xv_units"]}k{hp_dic["cn kernel_size"][0]}d{dorWithoutDot}' \
+    hpsString = f'cnu{hp_dic["cn_fc4Xv_units"]}k{hp_dic["cn kernel_size"][0]}d{dorWithoutDot}' \
                 f'p2Dsz_st{hp_dic["AveragePooling2D pool_size"][0]}_{hp_dic["AveragePooling2D strides"][0]}pyr{max(hp_dic["SpatialPyramidPooling2D bins"])[0]}'
     # hpsString = '_cn'+hp_dic['cn_fc4Xv_units']+'krnl'+hp_dic['cn kernel_size'][0]+'dor'+hp_dic['cn drop out rate']+'p2Dsz'+hp_dic['AveragePooling2D pool_size'][0] + \
     #     'p2Dstr'+hp_dic['AveragePooling2D strides'][0]+'pyr'+max(hp_dic['SpatialPyramidPooling2D bins'])[0]
     for i in range(int(n_dense_before_output)):
-        hpsString = hpsString+'dns'+str(0)+'u'+ str(model.layers[15 + i * 2].get_config()['units'])
+        if i == 0:
+            hpsString = hpsString + 'dns'+ str(model.layers[15 + i * 2].get_config()['units'])
+        else:
+            hpsString = hpsString +'-'+ str(model.layers[15 + i * 2].get_config()['units'])
     print(hpsString)
     # Define output filenames
     fn_fig_val = dir_tgt / f'{hpsString}_res_{trial.number}_val.png' #{out_model.split(".h5")[0]}_
@@ -339,7 +351,7 @@ def objective_2DCNN(trial):
         Xt_val, Xv_val, y_val = readingsits2D.subset_data(Xt, region_ohe, y, groups == val_i)
         Xt_test, Xv_test, y_test = readingsits2D.subset_data(Xt, region_ohe, y, groups == test_i)
 
-        # removed, this is not the right way, resampling has now been made upfront in main
+        # MM removed, this is not the right way, resampling has now been made upfront in main
         #X_train = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
         #Xt_val = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
         #Xt_test = tf.image.resize(Xt_train, [input_size, input_size]).numpy()
@@ -362,16 +374,20 @@ def objective_2DCNN(trial):
         ys_val = transformer_y.transform(y_val[:, [crop_n]])
         ys_test = transformer_y.transform(y_test[:, [crop_n]])
 
-        # We compile our model with a sampled learning rate.
+        # Compile and fit
         if model_type == '2DCNN_SISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                           {'ts_input': Xt_val}, ys_val,
-                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
+                                          out_model_file, n_epochs=dict_train_params['N_EPOCHS'], batch_size=dict_train_params['BATCH_SIZE'],
+                                          learning_rate=dict_train_params['lr'], beta_1=dict_train_params['beta_1'],
+                                          beta_2=dict_train_params['beta_2'], decay=dict_train_params['decay'])
             X_test = {'ts_input': Xt_test}
         elif model_type == '2DCNN_MISO':
             model, y_val_preds = cv_Model(model, {'ts_input': Xt_train, 'v_input': Xv_train}, ys_train,
                                           {'ts_input': Xt_val, 'v_input': Xv_val}, ys_val,
-                                          out_model_file, n_epochs=N_EPOCHS, batch_size=BATCH_SIZE)
+                                          out_model_file, n_epochs=dict_train_params['N_EPOCHS'], batch_size=dict_train_params['BATCH_SIZE'],
+                                          learning_rate=dict_train_params['lr'], beta_1=dict_train_params['beta_1'],
+                                          beta_2=dict_train_params['beta_2'], decay=dict_train_params['decay'])
             X_test = {'ts_input': Xt_test, 'v_input': Xv_test}
 
         y_val_preds = transformer_y.inverse_transform(y_val_preds)
@@ -450,9 +466,9 @@ def run_wandb(args, month, input_size, trial, da_label, fn_asapID2AU, fn_stats90
                          'month': month,
                          'norm': args.normalisation,
                          'target': args.target,
-                         'n_epochs': N_EPOCHS,
-                         'batch_size': BATCH_SIZE,
-                         'n_trials': N_TRIALS,
+                         'n_epochs': dict_train_params['N_EPOCHS'],
+                         'batch_size': dict_train_params['BATCH_SIZE'],
+                         'n_trials': dict_train_params['N_TRIALS'],
                          'input_size': input_size
                          })
 

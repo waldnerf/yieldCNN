@@ -24,7 +24,108 @@ from tensorflow.keras import backend as K
 
 
 # -----------------------------------------------------------------------
-def Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
+def Archi_1DCNN(archi_type, Xt, Xv=None, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
+                     nunits_fc=64, activation='sigmoid', verbose=True):
+    # -- get the input sizes
+
+    mt, Lt, deptht = Xt.shape
+    input_shape_t = (Lt, deptht)
+    # Define the input placeholder.
+    Xt_input = Input(input_shape_t, name='ts_input')
+
+    if archi_type == 'MISO':
+        mv, Lv = Xv.shape
+        input_shape_v = (Lv,)
+        Xv_input = Input(input_shape_v, name='v_input')
+
+    # -- parameters of the architecture
+    l2_rate = 1.e-6
+
+    # -- nb_conv CONV layers
+    Xt = Xt_input
+    Xt = conv_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, kernel_regularizer=l2(l2_rate),
+                           dropout_rate=dropout_rate)
+    Xt = AveragePooling1D(pool_size=pool_size, strides=strides, padding='valid')(Xt)
+    Xt = conv_bn_relu_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, kernel_regularizer=l2(l2_rate),
+                           dropout_rate=dropout_rate)
+    Xt = GlobalAveragePooling1D(data_format='channels_last')(Xt)
+
+    if archi_type == 'MISO':
+        # -- Flatten
+        Xt = Flatten()(Xt)
+        # -- Vector inputs
+        Xv = Xv_input
+        Xv = Dense(nbunits_conv, activation=activation)(Xv)  # n units = n conv channels to add some balance among channels
+        # -- Concatenate
+        X = layers.Concatenate()([Xt, Xv])
+    elif archi_type == 'SISO':
+        # -- Flatten
+        X = Flatten()(Xt)
+
+    # -- Output FC layers
+    for add in range(nb_fc ):
+        X = Dense(nunits_fc // pow(2, add), activation=activation)(X)
+        X = Dropout(dropout_rate)(X)
+    #out1 = Dense(1, activation='relu', name='out1')(X)      #iw as relu
+    out1 = Dense(1, activation='linear', name='out1')(X)
+
+    # Create model
+    if archi_type == 'MISO':
+        model = Model(inputs=[Xt_input, Xv_input], outputs=[out1], name=f'Archi_1DCNN_MISO')
+    elif archi_type == 'SISO':
+        model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_1DCNN_SISO')
+
+    if verbose:
+        model.summary()
+    return model
+# -----------------------------------------------------------------------
+def Archi_simple(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
+                     nunits_fc=64, activation='sigmoid', verbose=True):
+    activation ='sigmoid'
+    dropout_rate = 0.05
+    # -- get the input sizes
+    mt, Lt, deptht = Xt.shape
+    input_shape_t = (Lt, deptht)
+    # Define the input placeholder.
+    Xt_input = Input(input_shape_t, name='ts_input')
+    # -- parameters of the architecture
+    l2_rate = 1.e-6
+
+    # -- nb_conv CONV layers
+    Xt = Xt_input
+    #cahnge order of batchnorm and relu
+    Xt = conv_bn_relu_norm_drop(Xt, nbunits=nbunits_conv, kernel_size=kernel_size, kernel_regularizer=l2(l2_rate),
+                           dropout_rate=dropout_rate)
+    X = Flatten()(Xt)
+    out1 = Dense(1, activation='linear', name='out1')(X)
+
+
+
+    model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_simple')
+
+    if verbose:
+        model.summary()
+    return model
+# -----------------------------------------------------------------------
+def Archi_simple_0(Xt, verbose=False):
+    activation ='sigmoid'
+    # -- get the input sizes
+    mt, Lt, deptht = Xt.shape
+    input_shape_t = (Lt, deptht)
+    # Define the input placeholder.
+    Xt_input = Input(input_shape_t, name='ts_input')
+    X = Flatten()(Xt_input)
+    out1 = Dense(1, activation='linear', name='out1')(X)
+
+
+
+    model = Model(inputs=Xt_input, outputs=[out1], name=f'Archi_simple')
+
+    if verbose:
+        model.summary()
+    return model
+# -----------------------------------------------------------------------
+def _Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1, funits_fc=1,
                      activation='sigmoid', verbose=True):
     # -- get the input sizes
     if isinstance(Xt, list):
@@ -62,7 +163,7 @@ def Archi_1DCNN_SISO(Xt, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3,
 
 
 # -----------------------------------------------------------------------
-def Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
+def _Archi_1DCNN_MISO(Xt, Xv, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
                      nunits_fc=1,
                      activation='sigmoid', verbose=True):
     # -- get the input sizes
