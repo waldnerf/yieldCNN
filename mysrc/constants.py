@@ -20,9 +20,9 @@ if sys.platform == 'win32':
         wandb_entity = 'waldnerf'
     elif getpass.getuser() == 'meronmi':
         #on pc office
-        # root_dir = Path(r'X:/PY_data/leanyf')
+        root_dir = Path(r'X:/PY_data/leanyf')
         #on idl server
-        root_dir = Path(r'D:/PY_data/leanyf')
+        #root_dir = Path(r'D:/PY_data/leanyf')
         git_dir = Path(r'c:/MM_not_sure_what_for')
         wandb_project = 'leanyf'
         wandb_entity = 'mmeroni'

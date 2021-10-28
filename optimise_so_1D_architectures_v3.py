@@ -36,10 +36,10 @@ dict_train_params = {
     'beta_2': 0.999,
     'decay':  0.01
 }
-
+dicthp = None
 # global vars - used in objective_2DCNN
 model_type = None
-Xt = None
+#Xt = None
 Xtk = None
 region_ohe = None
 #dir_tgt = None
@@ -94,7 +94,7 @@ def main():
         # make sure that we do not keep entries with 0 ton/ha yields, each region has yield 0 even if it is not with 90% production
         yields_2_keep = ~(yld_full[:, crop_n] <= 0)
         #TC
-        Xt_nozero = Xt_full[yields_2_keep, :]
+        #Xt_nozero = Xt_full[yields_2_keep, :]
         Xtk_nozero = Xtk_full[yields_2_keep,:,:]
         area = area_full[yields_2_keep, :]
         global region_id, groups
@@ -138,18 +138,24 @@ def main():
             else:
                 out_save.rm_tree(global_variables.dir_tgt)
                 indices = list(range(0, Xt_full.shape[1] // N_CHANNELS))
-                #
-                first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
+                # first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
                 # data are thus ordered according to a local year having index = 0 at first_month_in__raw_data
                 first = (cst.first_month_input_local_year) * 3
                 last = (cst.first_month_analysis_local_year + month - 1) * 3
-                msel = [True if ((x >= first) and (x < last)) else False for x in indices] * N_CHANNELS
+                # msel = [True if ((x >= first) and (x < last)) else False for x in indices] * N_CHANNELS
                 # msel = [True if x < (month * 3) else False for x in indices] * N_CHANNELS
                 ##TC
-                global Xt
+                #global Xt
                 global Xtk
-                Xt = Xt_nozero[:, msel]
-                Xtk = Xtk_nozero[:,first:last,:]
+                #Xt = Xt_nozero[:, msel]
+                Xtk = Xtk_nozero[:, first:last, :]
+                #Define and save hyper domain to test
+                global dicthp
+                dicthp = optunaHyperSet2Test(Xtk.shape[1])
+                fn = global_variables.dir_tgt / f'AAA_model_hp_tested.txt'
+                with open(fn, 'w') as f:
+                    for key in dicthp.keys():
+                        f.write("%s,%s\n" % (key, dicthp[key]))
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
@@ -199,30 +205,42 @@ def main():
     print('Time for this run:')
     print(datetime.datetime.now() - starttime)
 
+def optunaHyperSet2Test(Xd): #Xd id the time dimension of X
+    # Function to define the hyper domain to be tested by optuna
+    x = {
+        'nbunits_conv': {'low': 10, 'high': 20, 'step': 5},
+        'kernel_size': [3, 6],
+        'pool_size': {'low': 3, 'high':  Xd // 3, 'step': 1},
+        'dropout_rate': [0, 0.01, 0.1],
+        'learning_rate':  [0.0001, 0.001, 0.01],
+        'fc_conf': [0, 1, 2],
+        'n_epochs': {'low': 30, 'high':  150, 'step': 20},
+        'batch_size': [32, 64, 128]
+    }
+    return x
 
 def objective_1DCNN(trial):
     global_variables.trial_number = trial.number
     Xt_=Xtk
     Xd = Xt_.shape[1]  # 9, 12, 15, .., 30
     # Suggest values of the hyperparameters using a trial object.
-    # nbunits_conv_ = trial.suggest_int('nbunits_conv', 10, 45, step=5)
-    nbunits_conv_ = trial.suggest_int('nbunits_conv', 5, 20, step=5)
-    kernel_size_ = trial.suggest_categorical('kernel_size', [3, 6])
-    pool_size_ = trial.suggest_int('pool_size', 1, Xd//3) #should we fix it at 3, monthly pooling (with max)
+    nbunits_conv_ = trial.suggest_int('nbunits_conv', dicthp['nbunits_conv']['low'], dicthp['nbunits_conv']['high'], step=dicthp['nbunits_conv']['step'])
+    kernel_size_ = trial.suggest_categorical('kernel_size', dicthp['kernel_size'])
+    pool_size_ = trial.suggest_int('pool_size', dicthp['pool_size']['low'], dicthp['pool_size']['low'], step=dicthp['pool_size']['step']) #should we fix it at 3, monthly pooling (with max)
     strides_ = pool_size_
-    dropout_rate_ = trial.suggest_categorical('dropout_rate', [0, 0.01, 0.1])
-    learning_rate_ = trial.suggest_categorical('learning_rate', [0.0001, 0.001, 0.01])
+    dropout_rate_ = trial.suggest_categorical('dropout_rate', dicthp['dropout_rate'])
+    learning_rate_ = trial.suggest_categorical('learning_rate', dicthp['learning_rate'])
     # for the last fully connected layer one cannot request a suggestion seprately as below because nunits_fc_ has no
     # effect when nb_fc_ is 0. This would confuse Optuna
     #nb_fc_ = trial.suggest_categorical('nb_fc', [0, 1])#, 2])
     #nunits_fc_ = trial.suggest_categorical('funits_fc', [16, 32])#16, 64, step=8)
     # Instead we let Optuna to suggest a configuration
-    fc_conf = trial.suggest_categorical('fc_conf', [0, 1, 2])
+    fc_conf = trial.suggest_categorical('fc_conf', dicthp['fc_conf'])
     # Add epochs and batch size as hyper
     # 'N_EPOCHS': 200, # 100, #70,
-    n_epochs_ = trial.suggest_int('n_epochs', 30, 210, step=20)
+    n_epochs_ = trial.suggest_int('n_epochs', dicthp['n_epochs']['low'], dicthp['n_epochs']['high'], step=dicthp['n_epochs']['step']) #210
     # 'BATCH_SIZE': 128, #128
-    batch_size_ = trial.suggest_categorical('batch_size', [32, 64, 128])
+    batch_size_ = trial.suggest_categorical('batch_size', dicthp['batch_size'])
 
     if fc_conf == 0:
         nb_fc_ = 0
@@ -360,7 +378,7 @@ def objective_1DCNN(trial):
             Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
             subset_bool = groups == val_i
             Xt_val, Xv_val, y_val = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
-            #FC
+            #TC
             #Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
             #Xt_val, Xv_val, y_val = readingsits1D.subset_data(Xt, region_ohe, y, groups == val_i)
             # ---- Reshaping data necessary
