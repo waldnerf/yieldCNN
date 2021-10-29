@@ -34,7 +34,8 @@ dict_train_params = {
     #'lr': 0.01, #0.001 is Adam default
     'beta_1': 0.9, #all defaults
     'beta_2': 0.999,
-    'decay':  0.01
+    'decay':  0.01,
+    'l2_rate':  0.0035 # from Ola's paper
 }
 dicthp = None
 # global vars - used in objective_2DCNN
@@ -117,7 +118,7 @@ def main():
         region_ohe = common_functions_1D2D.add_one_hot(region_id)
 
         # loop by month
-        for month in [7,4]: #TODO put back to all -> range(1, cst.n_month_analysis + 1)
+        for month in [7]: #TODO put back to all -> range(1, cst.n_month_analysis + 1)
             # ---- output files and dirs
             dir_out = cst.my_project.params_dir
             dir_out.mkdir(parents=True, exist_ok=True)
@@ -152,8 +153,8 @@ def main():
                 #Define and save hyper domain to test
                 global dicthp
                 dicthp = optunaHyperSet2Test(Xtk.shape[1])
-                fn = global_variables.dir_tgt / f'AAA_model_hp_tested.txt'
-                with open(fn, 'w') as f:
+                fn_hp = global_variables.dir_tgt / f'AAA_model_hp_tested.txt'
+                with open(fn_hp, 'w') as f:
                     for key in dicthp.keys():
                         f.write("%s,%s\n" % (key, dicthp[key]))
                 print('------------------------------------------------')
@@ -204,13 +205,18 @@ def main():
                     run_wandb(args, month, trial, fn_asapID2AU, fn_stats90)
     print('Time for this run:')
     print(datetime.datetime.now() - starttime)
+    # dir_res
+    fn_hp = dir_res / f'AAA_executition_time.txt'
+    with open(fn_hp, 'w') as f:
+        f.write('Time for this run:\n')
+        f.write(str(datetime.datetime.now() - starttime))
 
 def optunaHyperSet2Test(Xd): #Xd id the time dimension of X
     # Function to define the hyper domain to be tested by optuna
     x = {
         'nbunits_conv': {'low': 10, 'high': 20, 'step': 5},
         'kernel_size': [3, 6],
-        'pool_size': {'low': 3, 'high':  Xd // 3, 'step': 1},
+        'pool_size': {'low': 2, 'high':  Xd // 3, 'step': 1},
         'dropout_rate': [0, 0.01, 0.1],
         'learning_rate':  [0.0001, 0.001, 0.01],
         'fc_conf': [0, 1, 2],
@@ -226,7 +232,7 @@ def objective_1DCNN(trial):
     # Suggest values of the hyperparameters using a trial object.
     nbunits_conv_ = trial.suggest_int('nbunits_conv', dicthp['nbunits_conv']['low'], dicthp['nbunits_conv']['high'], step=dicthp['nbunits_conv']['step'])
     kernel_size_ = trial.suggest_categorical('kernel_size', dicthp['kernel_size'])
-    pool_size_ = trial.suggest_int('pool_size', dicthp['pool_size']['low'], dicthp['pool_size']['low'], step=dicthp['pool_size']['step']) #should we fix it at 3, monthly pooling (with max)
+    pool_size_ = trial.suggest_int('pool_size', dicthp['pool_size']['low'], dicthp['pool_size']['high'], step=dicthp['pool_size']['step']) #should we fix it at 3, monthly pooling (with max)
     strides_ = pool_size_
     dropout_rate_ = trial.suggest_categorical('dropout_rate', dicthp['dropout_rate'])
     learning_rate_ = trial.suggest_categorical('learning_rate', dicthp['learning_rate'])
@@ -272,6 +278,7 @@ def objective_1DCNN(trial):
                                  nb_fc=nb_fc_,
                                  nunits_fc=nunits_fc_,
                                  activation='sigmoid',
+                                 l2_rate = dict_train_params['l2_rate'],
                                  verbose=False)
 
     elif model_type == '1DCNN_MISO':
@@ -285,6 +292,7 @@ def objective_1DCNN(trial):
                                  nb_fc=nb_fc_,
                                  nunits_fc=nunits_fc_,
                                  activation='sigmoid',
+                                 l2_rate=dict_train_params['l2_rate'],
                                  verbose=False)
     elif model_type == 'simple':
         model = Archi_simple(Xt_,
@@ -296,6 +304,7 @@ def objective_1DCNN(trial):
                              nb_fc=nb_fc_,
                              nunits_fc=nunits_fc_,
                              activation='sigmoid',
+                             l2_rate=dict_train_params['l2_rate'],
                              verbose=False)
         hpsString = 'simple'
 

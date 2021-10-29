@@ -25,7 +25,7 @@ from tensorflow.keras import backend as K
 
 # -----------------------------------------------------------------------
 def Archi_1DCNN(archi_type, Xt, Xv=None, nbunits_conv=10, kernel_size=3, strides=3, pool_size=3, dropout_rate=0., nb_fc=1,
-                     nunits_fc=64, activation='sigmoid', verbose=True):
+                     nunits_fc=64, activation='sigmoid', l2_rate = 1.e-6, verbose=True):
     # -- get the input sizes
 
     mt, Lt, deptht = Xt.shape
@@ -37,9 +37,6 @@ def Archi_1DCNN(archi_type, Xt, Xv=None, nbunits_conv=10, kernel_size=3, strides
         mv, Lv = Xv.shape
         input_shape_v = (Lv,)
         Xv_input = Input(input_shape_v, name='v_input')
-
-    # -- parameters of the architecture
-    l2_rate = 1.e-6
 
     # -- nb_conv CONV layers
     Xt = Xt_input
@@ -55,7 +52,8 @@ def Archi_1DCNN(archi_type, Xt, Xv=None, nbunits_conv=10, kernel_size=3, strides
         Xt = Flatten()(Xt)
         # -- Vector inputs
         Xv = Xv_input
-        Xv = Dense(nbunits_conv, activation=activation)(Xv)  # n units = n conv channels to add some balance among channels
+        #Xv = Dense(nbunits_conv, activation=activation)(Xv)
+        Xv = Dense(nbunits_conv, activation=activation, kernel_regularizer=l2(l2_rate))(Xv)  # n units = n conv channels to add some balance among channels
         # -- Concatenate
         X = layers.Concatenate()([Xt, Xv])
     elif archi_type == 'SISO':
@@ -64,7 +62,8 @@ def Archi_1DCNN(archi_type, Xt, Xv=None, nbunits_conv=10, kernel_size=3, strides
 
     # -- Output FC layers
     for add in range(nb_fc ):
-        X = Dense(nunits_fc // pow(2, add), activation=activation)(X)
+        #X = Dense(nunits_fc // pow(2, add), activation=activation)(X)
+        X = Dense(nunits_fc // pow(2, add), activation=activation, kernel_regularizer=l2(l2_rate))(X)
         X = Dropout(dropout_rate)(X)
     #out1 = Dense(1, activation='relu', name='out1')(X)      #iw as relu
     out1 = Dense(1, activation='linear', name='out1')(X)
