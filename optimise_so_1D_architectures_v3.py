@@ -35,7 +35,7 @@ dict_train_params = {
     'beta_1': 0.9, #all defaults
     'beta_2': 0.999,
     'decay':  0.01,
-    'l2_rate':  0.0035 # from Ola's paper
+    'l2_rate':   1.e-6 #0.0035 # from Ola's paper
 }
 dicthp = None
 # global vars - used in objective_2DCNN
@@ -155,8 +155,12 @@ def main():
                 dicthp = optunaHyperSet2Test(Xtk.shape[1])
                 fn_hp = global_variables.dir_tgt / f'AAA_model_hp_tested.txt'
                 with open(fn_hp, 'w') as f:
+                    f.write('hyper space tested\n')
                     for key in dicthp.keys():
-                        f.write("%s,%s\n" % (key, dicthp[key]))
+                        f.write("%s,%s\n" % (key, dicthp[key]))  #
+                    f.write('train parameters\n') #dict_train_params
+                    for key in dict_train_params.keys():
+                        f.write("%s,%s\n" % (key, dict_train_params[key]))  #
                 print('------------------------------------------------')
                 print('------------------------------------------------')
                 print(f"")
