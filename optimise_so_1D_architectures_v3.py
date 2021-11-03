@@ -35,7 +35,7 @@ dict_train_params = {
     #'lr': 0.01, #0.001 is Adam default
     'beta_1': 0.9, #all defaults (they are not used now)
     'beta_2': 0.999,
-    'decay':  0.01,
+    'decay':  0.01, # not used
     'l2_rate':   1.e-6 # This is strictly an archi parameters rather than a training one
 }
 dicthp = None
