@@ -39,7 +39,6 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, nEpochs4Fi
     class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
         def _log_gradients(self, epoch):
             writer = self._writers['train']
-
             with writer.as_default(), tf.GradientTape() as g:
                 # here we use test data to calculate the gradients
                 features = X_val
@@ -82,27 +81,35 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, nEpochs4Fi
     # ---- optimizer
     #opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, decay=decay)
     #opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2)
-    opt = optimizers.Adam(learning_rate=lr)#, beta_1=beta_1, beta_2=beta_2)
+    opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2)
+    callback_list = []
 
-    if nEpochs4FinalFit !=None:
-        n_epochs = nEpochs4FinalFit
-        # define callbacks for this (also activate later when it fits)
+    model.compile(optimizer=opt,
+                  loss={'out1': 'mse'},
+                  loss_weights={'out1': 1.},
+                  metrics=['mse'])
+
+    # reload initial weights if the model was already trained
+    if global_variables.init_weights == None:
+        global_variables.init_weights = model.get_weights()
     else:
-        # ---- monitoring the minimum validation loss
-        checkpoint = ModelCheckpoint(out_model_file, verbose=0, save_best_only=False, save_freq='epoch')
-        #reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
-        #                              patience=5, min_lr=0.00001)
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5,
-                                      patience=5, min_lr=0.0001)
-        #todo put it back
-        #callback_list = [checkpoint, reduce_lr]
-        callback_list = [checkpoint] #'None' #
+        model.set_weights(global_variables.init_weights)
+
+    # If validation data are provided we are in the inner loop and we are training on training data only,
+    # if they are not provided we have completed the inner cv loop and we are fitting on train+val to predict the test
+    if not ys_val is None:
+        # inner loop, fitting on train set and predict val year
+        if False:
+            # These callbacks are not used anymore because of the new CV strategy
+            # ---- monitoring the minimum validation loss
+            checkpoint = ModelCheckpoint(out_model_file, verbose=0, save_best_only=False, save_freq='epoch')
+            reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.0001) # IT WAS factor=0.1,
+            callback_list = [checkpoint, reduce_lr]
         if log == 'tensorboard':
-            # now check some metrics with tensorboard
-            log_dir =  global_variables.dir_tgt / 'tensorboard_logs' / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            # Store some metrics for the analysis with tensorboard
+            log_dir = global_variables.dir_tgt / 'tensorboard_logs' / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             os.makedirs(log_dir, exist_ok=True)
-            # Attempt to get gradients https://stackoverflow.com/questions/57759635/get-gradients-with-keras-tensorflow-2-0)
-            if True:
+            if True: # Attempt to get gradients https://stackoverflow.com/questions/57759635/get-gradients-with-keras-tensorflow-2-0)
                 tensorboard_callback = ExtendedTensorBoard(log_dir=log_dir, histogram_freq=1)
             else:
                 tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -112,97 +119,93 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, nEpochs4Fi
             # then on conda activate enironment
             # tensorboard --logdir=D:\PY_data\leanyf\tensorboard_logs\20210927-152409 --host localhost --port 8088
             # # http://localhost:8088
-    model.compile(optimizer=opt,
-                  loss={'out1': 'mse'},
-                  loss_weights={'out1': 1.},
-                  metrics=['mse'])
-    if global_variables.init_weights == None:
-        global_variables.init_weights = model.get_weights()
-    else:
-        model.set_weights(global_variables.init_weights)
 
-    if nEpochs4FinalFit != None:
-        model_hist = model.fit(X_train,
-                               {'out1': ys_train},
-                               epochs=n_epochs,
-                               batch_size=batch_size, shuffle=True,
-                               verbose=0)#, callbacks=callback_list)
-        model.save(out_model_file)
-        pred = None
-        epochOfBestVal = None
-    else:
         model_hist = model.fit(X_train,
                                {'out1': ys_train},
                                epochs=n_epochs,
                                batch_size=batch_size, shuffle=True,
                                validation_data=(X_val, {'out1': ys_val}),
-                               verbose=0)#, callbacks=callback_list) #evrbose=0, callbacks=callback_list)
+                               verbose=0)  # , callbacks=callback_list)
         model.save(out_model_file)
-        # 2021 09 24 Model fit results sometimes (due to Optuna assignation of hypers with given data)
-        # in los always equal to NaN (maybe because of exploding gradients, to be checked).
-        # Because of this no model is saved and the program was crashing. Now if it happens we save some info and then we return
-        # Nan. This should end up in a trial statistics that is NaN that is ignored by Optuna
-        if os.path.exists(out_model_file) == False:
-            fn = global_variables.dir_tgt / f'model_errors.log'
-            with open(fn, 'a') as f:
-                f.write('\n' + 'architecture_features.py, no model file will generate an error. Printing info: ' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-                print('************************************************')
-                f.write('\n' + 'history of val_mse')
-                f.write(('\n' + ", ".join(map(str, model_hist.history['val_mse']))))
-                # Data check section (nan and min max)
-                f.write('\n' + "X_train sum (finite if not nan there), min, max")
-                f.write(('\n' + ", ".join(map(str, [X_train['ts_input'].sum(), X_train['ts_input'].min(), X_train['ts_input'].max()]))))
-                f.write('\n' + "ys_train sum (finite if not nan there), min, max")
-                f.write(('\n' + ", ".join(map(str, [ys_train.sum(), ys_train.min(), ys_train.max()]))))
-                f.write('\n'+"X_val sum (finite if not nan there), min, max")
-                f.write(('\n' + ", ".join(map(str, [X_val['ts_input'].sum(), X_val['ts_input'].min(), X_val['ts_input'].max()]))))
-                f.write('\n'+"ys_val sum (finite if not nan there), min, max")
-                f.write(('\n' + ", ".join(map(str, [ys_val.sum(), ys_val.min(), ys_val.max()]))))
-                #hyper check
-                # for i, l in enumerate(model.layers):
-                #     print(i, l)
-                #     print(l.get_config())
-                f.write('\n'+'Hypers suggested by Optuna:')
-                n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
-                hp_dic = {'cn_fc4Xv_units': str(model.layers[1].get_config()['filters']),
-                          'cn kernel_size': str(model.layers[1].get_config()['kernel_size']),
-                          'cn strides (fixed)': str(model.layers[1].get_config()['strides']),
-                          'cn drop out rate:': str(model.layers[4].get_config()['rate']),
-                          'AveragePooling2D pool_size': str(model.layers[5].get_config()['pool_size']),
-                          'AveragePooling2D strides': str(model.layers[5].get_config()['strides']),
-                          'Input shape': str(model.layers[0].output_shape),
-                          'Output shape before Pyramid': str(model.layers[9].output_shape),
-                          'SpatialPyramidPooling2D bins': str(model.layers[10].get_config()['bins']),
-                          'n FC layers before output (nb_fc)': str(int(n_dense_before_output))
-                          }
-                for i in range(int(n_dense_before_output)):
-                    hp_dic[str(i) + ' ' + 'fc_units'] = str(model.layers[15 + i * 2].get_config()['units'])
-                    hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
-                hp_dic['Fit final mse'] = model_hist.history['val_mse'][-1]
-                f.write('\n')
-                for key, value in hp_dic.items():
-                    f.write('%s:%s\n' % (key, value))
-                f.write('************************************************')
-            return model, ys_val*np.nan
-        else:
-            if log == 'tensorboard':
-                print('Inspect output')
-            if log == 'plot_loss' or log == 'tensorboard':
-                plt.plot(model_hist.history['loss'], '-', color='orange', label='train loss')
-                plt.plot(model_hist.history['val_loss'], '-', color='blue', label='val loss')
-                #plt.ylim([0.0, np.array([np.array(model_hist.history['loss']).max(), np.array(model_hist.history['val_loss']).max()]).max()])
-                plt.ylim([0.0, 0.5])
-                plt.title(f'Test set {global_variables.outer_test_loop} (out {global_variables.test_group}), Val group {global_variables.val_group}')
-                plt.xlabel("Epochs")
-                plt.ylabel("Loss")
-                plt.legend(loc="upper right", title="", frameon=False)
-                fn = global_variables.dir_tgt / f'zloss_trial_{global_variables.trial_number}_outer{global_variables.outer_test_loop+1}val_group{global_variables.val_group}.png'
-                plt.savefig(fn, dpi=300)
-                plt.close()
-            del model
-            epochOfBestVal = np.array(model_hist.history['val_loss']).argmin()+1
-            model = load_model(out_model_file)
-            pred = model.predict(x=X_val)
+        if log == 'plot_loss' or log == 'tensorboard':
+            plt.plot(model_hist.history['loss'], '-', color='orange', label='train loss')
+            plt.plot(model_hist.history['val_loss'], '-', color='blue', label='val loss')
+            #plt.ylim([0.0, np.array([np.array(model_hist.history['loss']).max(), np.array(model_hist.history['val_loss']).max()]).max()])
+            plt.ylim([0.0, 0.5])
+            plt.title(f'Test set {global_variables.outer_test_loop} (out {global_variables.test_group}), Val group {global_variables.val_group}')
+            plt.xlabel("Epochs")
+            plt.ylabel("Loss")
+            plt.legend(loc="upper right", title="", frameon=False)
+            fn = global_variables.dir_tgt / f'zloss_trial_{global_variables.trial_number}_outer{global_variables.outer_test_loop+1}val_group{global_variables.val_group}.png'
+            plt.savefig(fn, dpi=300)
+            plt.close()
+
+        epochOfBestVal = np.array(model_hist.history['val_loss']).argmin()+1
+        # we were deleting and reloading the model and reloaded when we were using early stopping callback, not anymore
+        #del model
+        #model = load_model(out_model_file)
+        pred = model.predict(x=X_val)
+    else:
+        # end of inner loop, using all n-1 to train
+        model_hist = model.fit(X_train,
+                               {'out1': ys_train},
+                               epochs=n_epochs,
+                               batch_size=batch_size, shuffle=True,
+                               verbose=0)  # , callbacks=callback_list)
+        model.save(out_model_file)
+        pred = None
+        epochOfBestVal = None
+
+    # 2021 09 24 Model fit results sometimes (due to Optuna assignation of hypers with given data)
+    # in los always equal to NaN (maybe because of exploding gradients, to be checked).
+    # Because of this no model is saved and the program was crashing. Now if it happens we save some info and then we return
+    # Nan. This should end up in a trial statistics that is NaN that is ignored by Optuna
+    if os.path.exists(out_model_file) == False:
+        fn = global_variables.dir_tgt / f'model_errors.log'
+        with open(fn, 'a') as f:
+            f.write(
+                '\n' + 'architecture_features.py, no model file will generate an error. Printing info: ' + datetime.datetime.now().strftime(
+                    "%Y%m%d-%H%M%S"))
+            print('************************************************')
+            f.write('\n' + 'history of val_mse')
+            f.write(('\n' + ", ".join(map(str, model_hist.history['val_mse']))))
+            # Data check section (nan and min max)
+            f.write('\n' + "X_train sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(
+                map(str, [X_train['ts_input'].sum(), X_train['ts_input'].min(), X_train['ts_input'].max()]))))
+            f.write('\n' + "ys_train sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(map(str, [ys_train.sum(), ys_train.min(), ys_train.max()]))))
+            f.write('\n' + "X_val sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(
+                map(str, [X_val['ts_input'].sum(), X_val['ts_input'].min(), X_val['ts_input'].max()]))))
+            f.write('\n' + "ys_val sum (finite if not nan there), min, max")
+            f.write(('\n' + ", ".join(map(str, [ys_val.sum(), ys_val.min(), ys_val.max()]))))
+            # hyper check
+            # for i, l in enumerate(model.layers):
+            #     print(i, l)
+            #     print(l.get_config())
+            f.write('\n' + 'Hypers suggested by Optuna:')
+            n_dense_before_output = (len(model.layers) - 1 - 14 - 1) / 2
+            hp_dic = {'cn_fc4Xv_units': str(model.layers[1].get_config()['filters']),
+                      'cn kernel_size': str(model.layers[1].get_config()['kernel_size']),
+                      'cn strides (fixed)': str(model.layers[1].get_config()['strides']),
+                      'cn drop out rate:': str(model.layers[4].get_config()['rate']),
+                      'AveragePooling2D pool_size': str(model.layers[5].get_config()['pool_size']),
+                      'AveragePooling2D strides': str(model.layers[5].get_config()['strides']),
+                      'Input shape': str(model.layers[0].output_shape),
+                      'Output shape before Pyramid': str(model.layers[9].output_shape),
+                      'SpatialPyramidPooling2D bins': str(model.layers[10].get_config()['bins']),
+                      'n FC layers before output (nb_fc)': str(int(n_dense_before_output))
+                      }
+            for i in range(int(n_dense_before_output)):
+                hp_dic[str(i) + ' ' + 'fc_units'] = str(model.layers[15 + i * 2].get_config()['units'])
+                hp_dic[str(i) + ' ' + 'drop out rate'] = str(model.layers[16 + i * 2].get_config()['rate'])
+            hp_dic['Fit final mse'] = model_hist.history['val_mse'][-1]
+            f.write('\n')
+            for key, value in hp_dic.items():
+                f.write('%s:%s\n' % (key, value))
+            f.write('************************************************')
+        return model, ys_val * np.nan, -999
 
     return model, pred, epochOfBestVal
 

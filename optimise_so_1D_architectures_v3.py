@@ -25,6 +25,7 @@ import mysrc.constants as cst
 import datetime
 
 # global vars
+version = '3_2bis'
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 dict_train_params = {
     'optuna_metric': 'rmse', #'rmse' or 'r2'
@@ -32,10 +33,10 @@ dict_train_params = {
     #'BATCH_SIZE': 128, #128
     'N_TRIALS': 100,
     #'lr': 0.01, #0.001 is Adam default
-    'beta_1': 0.9, #all defaults
+    'beta_1': 0.9, #all defaults (they are not used now)
     'beta_2': 0.999,
     'decay':  0.01,
-    'l2_rate':   1.e-6 #0.0035 # from Ola's paper
+    'l2_rate':   1.e-6 # This is strictly an archi parameters rather than a training one
 }
 dicthp = None
 # global vars - used in objective_2DCNN
@@ -127,7 +128,7 @@ def main():
             global out_model
             out_model = f'{model_type}-{args.target}.h5'
             # crop dirs
-            dir_crop = dir_res / f'crop_{crop_n}'
+            dir_crop = dir_res / f'crop_{crop_n}' /  f'v{version}'
             dir_crop.mkdir(parents=True, exist_ok=True)
             # month dirs
             #global dir_tgt
@@ -153,7 +154,7 @@ def main():
                 #Define and save hyper domain to test
                 global dicthp
                 dicthp = optunaHyperSet2Test(Xtk.shape[1])
-                fn_hp = global_variables.dir_tgt / f'AAA_model_hp_tested.txt'
+                fn_hp = global_variables.dir_tgt / f'AAA_model_hp_tested_{version}.txt'
                 with open(fn_hp, 'w') as f:
                     f.write('hyper space tested\n')
                     for key in dicthp.keys():
@@ -340,7 +341,7 @@ def objective_1DCNN(trial):
     fn_fig_val = global_variables.dir_tgt / f'trial_{trial.number}_{hpsString}_val.png'
     fn_fig_test = global_variables.dir_tgt / f'trial_{trial.number}_{hpsString}_test.png'
     fn_cv_test = global_variables.dir_tgt / f'trial_{trial.number}_{hpsString}_test.csv'
-    fn_report = global_variables.dir_tgt / f'AAA_report.csv'
+    fn_report = global_variables.dir_tgt / f'AAA_report_{version}.csv'
     out_model_file = global_variables.dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
     rmses_val, r2s_val, rmses_test, r2s_test = [], [], [], []
@@ -462,14 +463,13 @@ def objective_1DCNN(trial):
 
             # Update counter
             global_variables.inner_cv_loop += 1
-            #inner_loop += 1
 
-        # CV finished
+        # ---- Inner CV loop finished
         global_variables.outer_test_loop += 1
-
         print(
             f'Outer loop {global_variables.outer_test_loop} - with {global_variables.inner_cv_loop} inner loop, testing n epochs: {n_epochs_ }, best at: {df_bestEpoch}')
         df_bestEpoch = None
+        # Check if the trial should be pruned
         # ---- Optuna pruning
         if dict_train_params['optuna_metric'] == 'rmse':
             varOptuna = np.mean(rmses_val)
@@ -477,7 +477,7 @@ def objective_1DCNN(trial):
             varOptuna = np.mean(r2s_val)
 
         trial.report(varOptuna, global_variables.outer_test_loop)  # report mse
-        if trial.should_prune():  # let optuna decide whether to prune dir_tgt / f'trial_{trial.number}_{hpsString}
+        if trial.should_prune():  # let optuna decide whether to prune
             # save configuration and performances in a file
             df_report = pd.DataFrame([[trial.number,'@outer_loop'+str(global_variables.outer_test_loop), hp_dic['lr'], np.mean(rmses_val), np.mean(r2s_val), np.mean(rmses_test), np.mean(r2s_test),
                                              nbunits_conv_, kernel_size_, pool_size_, strides_, dropout_rate_, nb_fc_, nunits_fc_, n_epochs_, batch_size_]],
@@ -489,14 +489,10 @@ def objective_1DCNN(trial):
                 df_report.to_csv(fn_report)
             raise optuna.exceptions.TrialPruned()
 
-
-        # Fit the model on training and validation data
+        # From the above I have validation statistics
+        # ---- Now fit the model on training and validation data
         subset_bool = [x in train_val_i for x in groups]
         Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
-        #TC
-        #Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y,                                                           [x in train_val_i for x in groups])
-        # ---- Reshaping data necessary
-        #Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
         # ---- Normalizing the data per band
         min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
         Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
@@ -507,7 +503,7 @@ def objective_1DCNN(trial):
         if model_type == '1DCNN_SISO':
             model, y_val_preds, bestEpoch = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                                      {'ts_input': None}, None,
-                                                     out_model_file,  nEpochs4FinalFit=n_epochs_,n_epochs=n_epochs_, batch_size=batch_size_,
+                                                     out_model_file, n_epochs=n_epochs_, batch_size=batch_size_,
                                                      learning_rate=hp_dic['lr'],
                                                      beta_1=dict_train_params['beta_1'],
                                                      beta_2=dict_train_params['beta_2'],
@@ -516,7 +512,7 @@ def objective_1DCNN(trial):
         elif model_type == '1DCNN_MISO':
             model, y_val_preds, bestEpoch = cv_Model(model, {'ts_input': Xt_train, 'v_input': Xv_train}, ys_train,
                                                      {'ts_input': None, 'v_input': None}, None,
-                                                     out_model_file, nEpochs4FinalFit=n_epochs_, n_epochs=n_epochs_, batch_size=batch_size_,
+                                                     out_model_file, n_epochs=n_epochs_, batch_size=batch_size_,
                                                      learning_rate=hp_dic['lr'],
                                                      beta_1=dict_train_params['beta_1'],
                                                      beta_2=dict_train_params['beta_2'],
@@ -525,7 +521,7 @@ def objective_1DCNN(trial):
         elif model_type == 'simple':
             model, y_val_preds, bestEpoch = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                                      {'ts_input': None}, None,
-                                                     out_model_file, nEpochs4FinalFit=selectedEpochs,
+                                                     out_model_file,
                                                      n_epochs=dict_train_params['N_EPOCHS'],
                                                      batch_size=dict_train_params['BATCH_SIZE'],
                                                      learning_rate=hp_dic['lr'],
