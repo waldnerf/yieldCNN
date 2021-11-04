@@ -25,7 +25,7 @@ import mysrc.constants as cst
 import datetime
 
 # global vars
-version = '3_2bis'
+version = '3_2quater'
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 dict_train_params = {
     'optuna_metric': 'rmse', #'rmse' or 'r2'

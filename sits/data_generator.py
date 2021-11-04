@@ -41,7 +41,7 @@ class DG(object):
         self.Ymin_max_standardized_noiseSD = Ymin_max_standardized_noiseSD
 
     def generate(self, lenTS, subset_bool):
-        # lenTS: the length of the time series to return (starting from index 3 that is 1st of October)
+        # lenTS: the length of the time series to return (starting from index 3 that is 1st of Sep)
         # subset_bool: train samples to be augmented
 
         # set augmented arrays to the original data arrays
