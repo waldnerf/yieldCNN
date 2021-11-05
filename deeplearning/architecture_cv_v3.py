@@ -68,7 +68,7 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, nEpochs4Fi
 
 
     # Debugging
-    log = 'none'#'plot_loss' #'tensorboard' # 'plot_loss', 'none'
+    log = 'plot_loss'#'plot_loss' #'tensorboard' # 'plot_loss', 'none'
     # ---- variables
     # default if not passed
     n_epochs = train_params.setdefault("n_epochs", 70) #70

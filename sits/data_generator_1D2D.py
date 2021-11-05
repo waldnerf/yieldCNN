@@ -12,9 +12,18 @@ def computingMinMaxPerSamplePerBand(Xt, D):
         min_per_sample = np.reshape(np.amin(Xt, axis=(1, 2)),(Xt_shape[0],1,1,Xt_shape[3]))
         max_per_sample = np.reshape(np.amax(Xt, axis=(1, 2)),(Xt_shape[0],1,1,Xt_shape[3]))
     return min_per_sample, max_per_sample
-
 # -----------------------------------------------------------------------
-def normMinMaxPerSamplePerBand(X, min_per, max_per, back=False):
+def computingMinMaxPerBand(Xt, D):
+    Xt_shape = Xt.shape
+    if D == 1:
+        min_per_sample = np.reshape(np.amin(Xt, axis=(0, 1)), (1, Xt_shape[2]))
+        max_per_sample = np.reshape(np.amax(Xt, axis=(0, 1)), (1, Xt_shape[2]))
+    elif D == 2:
+        min_per_sample = np.reshape(np.amin(Xt, axis=(0, 1, 2)),(1,1,Xt_shape[3]))
+        max_per_sample = np.reshape(np.amax(Xt, axis=(0, 1, 2)),(1,1,Xt_shape[3]))
+    return min_per_sample, max_per_sample
+# -----------------------------------------------------------------------
+def normMinMax(X, min_per, max_per, back=False):
     if back == True:
         return X * (max_per - min_per) + min_per
     else:
@@ -58,7 +67,7 @@ class DG(object):
         X_current = self.X_augmented.copy()
         self.region_ohe_augmented = self.region_ohe[subset_bool,:]
         #self.groups_augmented = self.groups[subset_bool]
-        self.y_augmented = self.y[subset_bool,:]
+        self.y_augmented = self.y[subset_bool]
 
         if self.Xshift == True:
             # 1 - shift left (no matter if we leave the last deks unchanged, they will not be used)
@@ -69,7 +78,7 @@ class DG(object):
             self.X_augmented = np.concatenate((self.X_augmented, np.roll(X_current, 2, axis=self.D)), axis=0)
             # add unchanged data for the other variables
             self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (5,1)) #repeat 5 times (original + 4 augmented) on axis 0
-            self.y_augmented = np.tile(self.y_augmented, (5, 1))
+            self.y_augmented = np.tile(self.y_augmented, 5)
             if False:   #this is for checking 2d
                 variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
                 fig, axs = plt.subplots(2, 4, figsize=(16.5, 7))
@@ -91,23 +100,22 @@ class DG(object):
         if self.Xnoise == True:
             n_before_noise = self.X_augmented.shape[0]
             if self.D == 1:
-                # X data can can come normalized or not. so I normalize again here (if it is already norm has no effect).
                 # we normalize 0-1, add noise, clip to >= 0 and back to value
                 # Normalize
-                min_per_sample, max_per_sample = computingMinMaxPerSamplePerBand(self.X_augmented, self.D)
-                X0 = normMinMaxPerSamplePerBand(self.X_augmented, min_per_sample, max_per_sample)
+                min_per_band, max_per_band = computingMinMaxPerBand(self.X_augmented, self.D)
+                X0 = normMinMax(self.X_augmented, min_per_band, max_per_band)
                 # add noise
                 X0 = X0 + np.random.normal(0, self.Xmin_max_standardized_noiseSD, X0.shape)
                 # adding noise can result in negative values, clip to zeros if there are negative values
                 X0[X0 < 0] = 0
                 # now denormalize back and add to augmented sample
                 self.X_augmented = np.concatenate(
-                    (self.X_augmented, normMinMaxPerSamplePerBand(X0, min_per_sample, max_per_sample, back=True)), axis=0)
+                    (self.X_augmented, normMinMax(X0, min_per_band, max_per_band, back=True)), axis=0)
                 # add data for the other variables
                 # self.region_ohe_augmented = np.tile(self.region_ohe_augmented, 2)
                 self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
                 # self.groups_augmented = np.tile(self.groups_augmented, 2)
-                self.y_augmented = np.tile(self.y_augmented, (2, 1))
+                self.y_augmented = np.tile(self.y_augmented, 2)
             elif self.D == 2:
                 # X data can come normalized min max (min hard coded to 0) to 0-1 (so min is actually 0 count) or not
                 # so I normalize again here (if it is already norm has no effect).
@@ -115,7 +123,7 @@ class DG(object):
                 # But we don't want to add noise in 0 count grid cell, so I have to mask the zeros and keep them zeros
                 # Normalize
                 min_per_sample, max_per_image = computingMinMaxPerSamplePerBand(self.X_augmented, self.D)
-                X0 = normMinMaxPerSamplePerBand(self.X_augmented, min_per_sample, max_per_sample)
+                X0 = normMinMax(self.X_augmented, min_per_sample, max_per_sample)
                 # add noise
                 X0 = X0 + np.random.normal(0, self.Xmin_max_standardized_noiseSD, X0.shape)
                 # set back to zero those that were 0
@@ -123,12 +131,12 @@ class DG(object):
                 # adding noise can result in negative values, clip to zeros if there are negative values
                 X0[X0 < 0] = 0
                 # now denormalize back and add to augmented sample
-                self.X_augmented = np.concatenate((self.X_augmented, normMinMaxPerSamplePerBand(X0, min_per_sample, max_per_sample, back=True)), axis=0)
+                self.X_augmented = np.concatenate((self.X_augmented, normMinMax(X0, min_per_sample, max_per_sample, back=True)), axis=0)
                 # add data for the other variables
                 #self.region_ohe_augmented = np.tile(self.region_ohe_augmented, 2)
                 self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
                 #self.groups_augmented = np.tile(self.groups_augmented, 2)
-                self.y_augmented = np.tile(self.y_augmented, (2, 1))
+                self.y_augmented = np.tile(self.y_augmented, 2)
                 if False:
                     id2plt = 1000 # refers to a sample before adding noise (must be < n_before_noise)
                     fig, axs = plt.subplots(3, 4, figsize=(16.5, 8))
@@ -173,15 +181,15 @@ class DG(object):
         if self.Ynoise == True:
             # as we did for X we normalize 0-1, add noise, clip to >= 0 and back to value
             # Normalize
-            min_per_crop = np.amin(self.y_augmented, axis=0)
-            max_per_crop = np.amax(self.y_augmented, axis=0)
-            y0 = normMinMaxPerSamplePerBand(self.y_augmented, min_per_crop, max_per_crop)
+            min_y = np.amin(self.y_augmented, axis=0)
+            max_y = np.amax(self.y_augmented, axis=0)
+            y0 = normMinMax(self.y_augmented, min_y, max_y)
             # add noise
             y0 = y0 + np.random.normal(0, self.Ymin_max_standardized_noiseSD, y0.shape)
             # be care it can give negative values, clip to zeros if there were negative values
             y0[y0 < 0] = 0
             # now denormalize back and add to sample
-            self.y_augmented = np.concatenate((self.y_augmented, normMinMaxPerSamplePerBand(y0, min_per_crop, max_per_crop, back=True)), axis=0)
+            self.y_augmented = np.concatenate((self.y_augmented, normMinMax(y0, min_y, max_y, back=True)), axis=0)
             # add data for the other variables
             self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
             if self.D == 1:
@@ -190,5 +198,9 @@ class DG(object):
                 self.X_augmented = np.tile(self.X_augmented, (2, 1, 1, 1))
         # adjust dimension of lenTS
         first = (cst.first_month_input_local_year) * 3
-        return self.X_augmented[:,:,first:first+lenTS,:], self.region_ohe_augmented, self.y_augmented
+        if self.D == 1:
+            return self.X_augmented[:,first:first+lenTS,:], self.region_ohe_augmented, self.y_augmented
+        elif self.D == 2:
+            return self.X_augmented[:,:,first:first+lenTS,:], self.region_ohe_augmented, self.y_augmented
+
 

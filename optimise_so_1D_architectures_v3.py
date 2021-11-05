@@ -26,7 +26,7 @@ import datetime
 import sits.data_generator_1D2D as data_generator
 
 # global vars
-version = 'test_one_crop'
+version = '4_data_aug'
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 dict_train_params = {
     'optuna_metric': 'rmse', #'rmse' or 'r2'
@@ -55,6 +55,20 @@ xlabels = None
 ylabels = None
 out_model = None
 
+def optunaHyperSet2Test(Xd): #Xd id the time dimension of X
+    # Function to define the hyper domain to be tested by optuna
+    x = {
+        'nbunits_conv': {'low': 10, 'high': 20, 'step': 5},
+        'kernel_size': [3, 6],
+        'pool_size': {'low': 2, 'high':  Xd // 3, 'step': 1},
+        'dropout_rate': [0, 0.01, 0.1],
+        'learning_rate':  [0.0001, 0.001, 0.01],
+        'fc_conf': [0, 1, 2],
+        #'n_epochs': {'low': 30, 'high':  150, 'step': 20},
+        'n_epochs': {'low': 10, 'high': 40, 'step': 10},
+        'batch_size': [32, 64, 128]
+    }
+    return x
 
 def main():
     starttime = datetime.datetime.now()
@@ -229,19 +243,6 @@ def main():
         f.write('Time for this run:\n')
         f.write(str(datetime.datetime.now() - starttime))
 
-def optunaHyperSet2Test(Xd): #Xd id the time dimension of X
-    # Function to define the hyper domain to be tested by optuna
-    x = {
-        'nbunits_conv': {'low': 10, 'high': 20, 'step': 5},
-        'kernel_size': [3, 6],
-        'pool_size': {'low': 2, 'high':  Xd // 3, 'step': 1},
-        'dropout_rate': [0, 0.01, 0.1],
-        'learning_rate':  [0.0001, 0.001, 0.01],
-        'fc_conf': [0, 1, 2],
-        'n_epochs': {'low': 30, 'high':  150, 'step': 20},
-        'batch_size': [32, 64, 128]
-    }
-    return x
 
 def objective_1DCNN(trial):
     global_variables.trial_number = trial.number
@@ -396,14 +397,14 @@ def objective_1DCNN(trial):
             Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
             # training data augmentation
             if data_augmentation:
-                Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], subset_bool)
+                Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[1], subset_bool)
             subset_bool = groups == val_i
             Xt_val, Xv_val, y_val = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
             # ---- Normalizing the data per band
             min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
             Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
             Xt_val = readingsits1D.normalizingData(Xt_val, min_per_t, max_per_t)
-#            Xt_test = readingsits1D.normalizingData(Xt_test, min_per_t, max_per_t)
+
 
             # Normalise ys
             transformer_y = MinMaxScaler().fit(y_train.reshape(-1,1))
@@ -493,7 +494,7 @@ def objective_1DCNN(trial):
         subset_bool = [x in train_val_i for x in groups]
         Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
         if data_augmentation:
-            Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], subset_bool)
+            Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[1], subset_bool)
         # ---- Normalizing the data per band
         min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
         Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
