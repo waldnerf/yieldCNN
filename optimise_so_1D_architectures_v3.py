@@ -23,9 +23,10 @@ from evaluation import model_evaluation as mod_eval
 from sits import readingsits1D, common_functions_1D2D
 import mysrc.constants as cst
 import datetime
+import sits.data_generator_1D2D as data_generator
 
 # global vars
-version = '3_2quater'
+version = 'test_one_crop'
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 dict_train_params = {
     'optuna_metric': 'rmse', #'rmse' or 'r2'
@@ -38,23 +39,21 @@ dict_train_params = {
     'decay':  0.01, # not used
     'l2_rate':   1.e-6 # This is strictly an archi parameters rather than a training one
 }
-dicthp = None
+
 # global vars - used in objective_2DCNN
+dicthp = None
 model_type = None
-#Xt = None
 Xtk = None
 region_ohe = None
-#dir_tgt = None
 groups = None
-#data_augmentation = None
-#generator = None
+data_augmentation = None
+generator = None
 y = None
 crop_n = None
 region_id = None
 xlabels = None
 ylabels = None
 out_model = None
-# to be used here and in architecture_cv
 
 
 def main():
@@ -64,6 +63,9 @@ def main():
     parser.add_argument('--model', type=str, default='1DCNN_MISO',
                         help='Model type: Single input single output (SISO) or Multiple inputs/Single output (MISO)')
     parser.add_argument('--target', type=str, default='yield', choices=['yield', 'area'], help='Target variable')
+    parser.add_argument('--Xshift', dest='Xshift', action='store_true', default=False, help='Data aug, shiftX')
+    parser.add_argument('--Xnoise', dest='Xnoise', action='store_true', default=False, help='Data aug, noiseX')
+    parser.add_argument('--Ynoise', dest='Ynoise', action='store_true', default=False, help='Data aug, noiseY')
     parser.add_argument('--wandb', dest='wandb', action='store_true', default=False, help='Store results on wandb.io')
     parser.add_argument('--overwrite', dest='overwrite', action='store_true', default=False,
                         help='Overwrite existing results')
@@ -75,6 +77,18 @@ def main():
     if args.wandb:
         print('Wandb log requested')
 
+    da_label = ''
+    global data_augmentation
+    if args.Xshift or args.Xnoise or args.Ynoise:
+        data_augmentation = True
+        if args.Xshift == True:
+            da_label = da_label + 'Xshift'
+        if args.Xnoise == True:
+            da_label = da_label + '_Xnoise'
+        if args.Ynoise == True:
+            da_label = da_label + '_Ynoise'
+    else:
+        data_augmentation = False
     # ---- Define some paths to data
     fn_indata = str(cst.my_project.data_dir / f'{cst.target}_full_1d_dataset_raw.csv')
     print("Input file: ", os.path.basename(str(fn_indata)))
@@ -83,26 +97,25 @@ def main():
     fn_stats90 = cst.root_dir / "raw_data" / "Algeria_stats90.csv"
 
     # ---- Downloading
-    Xt_full, area_full, region_id_full, groups_full, yld_full = readingsits1D.data_reader(fn_indata)
+    X_full, area_full, region_id_full, groups_full, yld_full = readingsits1D.data_reader(fn_indata)
     # Once and for all
     # Change here format of Xt_full to keras (n_sample, n_deks, n_channels)
-    Xtk_full = readingsits1D.reshape_data(Xt_full, N_CHANNELS)
+    Xk_full = readingsits1D.reshape_data(X_full, N_CHANNELS)
     # loop through all crops
     global crop_n
     for crop_n in [2]: # range(y.shape[1]): #!TODO: now only 2 soft wheat (0 - Barley, 1 - Durum, 2- Soft)
         # clean trial history for a new crop
         trial_history = []
-
-        # make sure that we do not keep entries with 0 ton/ha yields, each region has yield 0 even if it is not with 90% production
-        yields_2_keep = ~(yld_full[:, crop_n] <= 0)
-        #TC
-        #Xt_nozero = Xt_full[yields_2_keep, :]
-        Xtk_nozero = Xtk_full[yields_2_keep,:,:]
-        area = area_full[yields_2_keep, :]
+        # keep only the data of the selected crop (the selected crop may not cover all the regions,
+        # in th regions where it is not present, the yield was set to np nan when reading the data)
+        yld_crop = yld_full[:, crop_n]
+        subset_bool = ~np.isnan(yld_crop)
+        yld = yld_crop[subset_bool]
+        Xk = Xk_full[subset_bool,:,:]
+        area = area_full[subset_bool, crop_n]
         global region_id, groups
-        region_id = region_id_full[yields_2_keep]
-        groups = groups_full[yields_2_keep]
-        yld = yld_full[yields_2_keep, :]    #TODO: keep only current crop
+        region_id = region_id_full[subset_bool]
+        groups = groups_full[subset_bool]
         # ---- Format target variable
         global y, xlabels, ylabels
         if args.target == 'yield':
@@ -135,22 +148,22 @@ def main():
             global_variables.dir_tgt = dir_crop / f'month_{month}'
             global_variables.dir_tgt.mkdir(parents=True, exist_ok=True)
 
+            if data_augmentation:
+                # Instantiate a data generator for this crop
+                global generator
+                generator = data_generator.DG(Xk, region_ohe, y, Xshift=args.Xshift, Xnoise=args.Xnoise,
+                                              Ynoise=args.Ynoise)
+
             if (len([x for x in global_variables.dir_tgt.glob('best_model')]) != 0) & (args.overwrite is False):
                 pass
             else:
                 out_save.rm_tree(global_variables.dir_tgt)
-                indices = list(range(0, Xt_full.shape[1] // N_CHANNELS))
                 # first_month_in__raw_data = 8  # August; this is taken to allow data augmentation (after mirroring Oct and Nov of 2001 to Sep and Aug, all raw data start in August)
                 # data are thus ordered according to a local year having index = 0 at first_month_in__raw_data
                 first = (cst.first_month_input_local_year) * 3
                 last = (cst.first_month_analysis_local_year + month - 1) * 3
-                # msel = [True if ((x >= first) and (x < last)) else False for x in indices] * N_CHANNELS
-                # msel = [True if x < (month * 3) else False for x in indices] * N_CHANNELS
-                ##TC
-                #global Xt
                 global Xtk
-                #Xt = Xt_nozero[:, msel]
-                Xtk = Xtk_nozero[:, first:last, :]
+                Xtk = Xk[:, first:last, :]
                 #Define and save hyper domain to test
                 global dicthp
                 dicthp = optunaHyperSet2Test(Xtk.shape[1])
@@ -264,15 +277,6 @@ def objective_1DCNN(trial):
         nunits_fc_ = 24
     #activation_ = trial.suggest_categorical('activation', ['relu', 'sigmoid'])
 
-    if False: #TODO remove
-        nbunits_conv_ = 10
-        kernel_size_ = 4
-        pool_size_ = 3
-        strides_ = pool_size_ #trial.suggest_int('strides', 2, 5)
-        dropout_rate_ = 0.01
-        nb_fc_ = 0
-        nunits_fc_ = 16
-
     if model_type == '1DCNN_SISO':
         model = Archi_1DCNN('SISO', Xt_,
                                  nbunits_conv=nbunits_conv_,
@@ -362,15 +366,15 @@ def objective_1DCNN(trial):
         # Xt_test, Xv_test, y_test = readingsits1D.subset_data(Xt, region_ohe, y, groups == test_i)
         # Xt_test = readingsits1D.reshape_data(Xt_test, N_CHANNELS)
         subset_bool = groups == test_i
-        Xt_test, Xv_test, y_test = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+        Xt_test, Xv_test, y_test = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
         # a validation loop on all 16 years of val is too long. We reduce to nPerTercile*3,
         # taking 2 from each tercile of the yield data points
         # Here we assign a tercile to each year. As I have several admin units, I have first to compute avg yield by year
         if sampleTerciles:
             subset_bool = groups > 0 # take all
-            Xt_0, Xv_0, y_0 = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+            Xt_0, Xv_0, y_0 = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
             #Xt_0, Xv_0, y_0 = readingsits1D.subset_data(Xt, region_ohe, y, groups > 0)  # take all
-            df = pd.DataFrame({'group': groups, 'y': y_0[:, crop_n]})
+            df = pd.DataFrame({'group': groups, 'y': y_0})
             df = df[df['group'] != test_i]
             df_avg_by_year = df.groupby('group', as_index=False)['y'].mean()
             q33 = df_avg_by_year['y'].quantile(0.33)
@@ -389,16 +393,12 @@ def objective_1DCNN(trial):
             # once the val is left out, all the others are train
             train_i = [x for x in train_val_i if x != val_i]
             subset_bool =[x in train_i for x in groups]
-            Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+            Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
+            # training data augmentation
+            if data_augmentation:
+                Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], subset_bool)
             subset_bool = groups == val_i
-            Xt_val, Xv_val, y_val = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
-            #TC
-            #Xt_train, Xv_train, y_train = readingsits1D.subset_data(Xt, region_ohe, y, [x in train_i for x in groups])
-            #Xt_val, Xv_val, y_val = readingsits1D.subset_data(Xt, region_ohe, y, groups == val_i)
-            # ---- Reshaping data necessary
-            #Xt_train = readingsits1D.reshape_data(Xt_train, N_CHANNELS)
-            #Xt_val = readingsits1D.reshape_data(Xt_val, N_CHANNELS)
-
+            Xt_val, Xv_val, y_val = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
             # ---- Normalizing the data per band
             min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
             Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
@@ -406,12 +406,11 @@ def objective_1DCNN(trial):
 #            Xt_test = readingsits1D.normalizingData(Xt_test, min_per_t, max_per_t)
 
             # Normalise ys
-            transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
-            ys_train = transformer_y.transform(y_train[:, [crop_n]])
-            ys_val = transformer_y.transform(y_val[:, [crop_n]])
-            #ys_test = transformer_y.transform(y_test[:, [crop_n]])
+            transformer_y = MinMaxScaler().fit(y_train.reshape(-1,1))
+            ys_train = transformer_y.transform(y_train.reshape(-1,1))
+            ys_val = transformer_y.transform(y_val.reshape(-1,1))
 
-            # TODO remove only one sample, should be learned by hart
+            # TODO remove, only one sample, should be learned by hart
             if False:
                 idx = range(2)
                 Xt_train = Xt_train[idx, :, :].reshape(len(idx), -1, 4)
@@ -444,7 +443,7 @@ def objective_1DCNN(trial):
                 X_test = {'ts_input': Xt_test}
 
             y_val_preds = transformer_y.inverse_transform(y_val_preds)
-            out_val = np.concatenate([y_val[:, [crop_n]], y_val_preds], axis=1)
+            out_val = np.concatenate([y_val.reshape(-1,1), y_val_preds], axis=1)
 
             if df_val is None:
                 df_val = out_val
@@ -456,8 +455,8 @@ def objective_1DCNN(trial):
             else:
                 df_bestEpoch = np.append(df_bestEpoch, bestEpoch)
 
-            rmse_val = mean_squared_error(y_val[:, [crop_n]], y_val_preds, squared=False, multioutput='raw_values')
-            r2_val = r2_score(y_val[:, [crop_n]], y_val_preds)
+            rmse_val = mean_squared_error(y_val.reshape(-1,1), y_val_preds, squared=False, multioutput='raw_values')
+            r2_val = r2_score(y_val.reshape(-1,1), y_val_preds)
             rmses_val.append(rmse_val)
             r2s_val.append(r2_val)
 
@@ -492,14 +491,16 @@ def objective_1DCNN(trial):
         # From the above I have validation statistics
         # ---- Now fit the model on training and validation data
         subset_bool = [x in train_val_i for x in groups]
-        Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool, :]
+        Xt_train, Xv_train, y_train = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
+        if data_augmentation:
+            Xt_train, Xv_train, y_train = generator.generate(Xt_train.shape[2], subset_bool)
         # ---- Normalizing the data per band
         min_per_t, max_per_t = readingsits1D.computingMinMax(Xt_train, per=0)
         Xt_train = readingsits1D.normalizingData(Xt_train, min_per_t, max_per_t)
         Xt_test = readingsits1D.normalizingData(Xt_test, min_per_t, max_per_t)
         # Normalise ys
-        transformer_y = MinMaxScaler().fit(y_train[:, [crop_n]])
-        ys_train = transformer_y.transform(y_train[:, [crop_n]])
+        transformer_y = MinMaxScaler().fit(y_train.reshape(-1, 1))
+        ys_train = transformer_y.transform(y_train.reshape(-1, 1))
         if model_type == '1DCNN_SISO':
             model, y_val_preds, bestEpoch = cv_Model(model, {'ts_input': Xt_train}, ys_train,
                                                      {'ts_input': None}, None,
@@ -533,7 +534,7 @@ def objective_1DCNN(trial):
         y_test_preds = model.predict(x=X_test)
         y_test_preds = transformer_y.inverse_transform(y_test_preds)
 
-        out_test = np.concatenate([y_test[:, [crop_n]], y_test_preds], axis=1)
+        out_test = np.concatenate([y_test.reshape(-1, 1), y_test_preds], axis=1)
         out_details = np.expand_dims(region_id[groups == test_i].T, axis=1)
         if not isinstance(df_details, np. ndarray): #df_details == None:
             df_details = np.concatenate([out_details, (np.ones_like(out_details) * test_i)], axis=1)
@@ -542,8 +543,8 @@ def objective_1DCNN(trial):
             df_details = np.concatenate(
                 [df_details, np.concatenate([out_details, (np.ones_like(out_details) * test_i)], axis=1)], axis=0)
             df_test = np.concatenate([df_test, out_test], axis=0)
-        rmse_test = mean_squared_error(y_test[:, [crop_n]], y_test_preds, squared=False, multioutput='raw_values')
-        r2_test = r2_score(y_test[:, [crop_n]], y_test_preds)
+        rmse_test = mean_squared_error(y_test.reshape(-1, 1), y_test_preds, squared=False, multioutput='raw_values')
+        r2_test = r2_score(y_test.reshape(-1, 1), y_test_preds)
         rmses_test.append(rmse_test)
         r2s_test.append(r2_test)
 
@@ -562,11 +563,6 @@ def objective_1DCNN(trial):
     pd.DataFrame(df_out, columns=['ASAP1_ID', 'Year', 'Observed', 'Predicted']).to_csv(fn_cv_test, index=False)
 
     # save configuration and performances in a file
-    # df_report = pd.DataFrame(data=[['no', hp_dic['lr'], av_rmse_val, av_r2_val, av_rmse_test, np.mean(r2s_test),
-    #                           nbunits_conv_, kernel_size_, pool_size_, strides_, dropout_rate_, nb_fc_, nunits_fc_]],
-    #                          columns=['Pruned','lr','av_rmse_val', 'av_r2_val', 'av_rmse_test', 'av_r2_test',
-    #                                   'nbunits_conv', 'kernel_size', 'pool_size', 'strides', 'dropout_rate', 'n_fc',
-    #                                   'nunits_fc'])
     df_report = pd.DataFrame([[trial.number, 'no', hp_dic['lr'],
                                av_rmse_val, av_r2_val, av_rmse_test, np.mean(r2s_test),
                                nbunits_conv_, kernel_size_, pool_size_, strides_, dropout_rate_, nb_fc_, nunits_fc_, n_epochs_, batch_size_]],

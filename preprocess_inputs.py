@@ -97,7 +97,7 @@ def main(D, fn_features, fn_stats, fn_stats90, fn_out='', save_plot=True):
         df_stats2use = df_stats2use.append(tmp[tmp["ASAP1_ID"].isin(regions2keep)])
     df_statsw = df_stats2use.pivot_table(index=['ASAP1_ID', 'AU_name', 'Year'],
                                      columns=['Crop_name'],
-                                     values=['Area', 'Yield']).fillna(0)
+                                     values=['Area', 'Yield']).fillna(np.nan) #it was 0 until 2021-11-05
 
     df_statsw.columns = df_statsw.columns.map(lambda x: '{}_{}'.format(*x))
     df_statsw.reset_index(inplace=True)

@@ -100,8 +100,14 @@ class DG(object):
                 X0 = X0 + np.random.normal(0, self.Xmin_max_standardized_noiseSD, X0.shape)
                 # adding noise can result in negative values, clip to zeros if there are negative values
                 X0[X0 < 0] = 0
-
-
+                # now denormalize back and add to augmented sample
+                self.X_augmented = np.concatenate(
+                    (self.X_augmented, normMinMaxPerSamplePerBand(X0, min_per_sample, max_per_sample, back=True)), axis=0)
+                # add data for the other variables
+                # self.region_ohe_augmented = np.tile(self.region_ohe_augmented, 2)
+                self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
+                # self.groups_augmented = np.tile(self.groups_augmented, 2)
+                self.y_augmented = np.tile(self.y_augmented, (2, 1))
             elif self.D == 2:
                 # X data can come normalized min max (min hard coded to 0) to 0-1 (so min is actually 0 count) or not
                 # so I normalize again here (if it is already norm has no effect).
@@ -117,7 +123,7 @@ class DG(object):
                 # adding noise can result in negative values, clip to zeros if there are negative values
                 X0[X0 < 0] = 0
                 # now denormalize back and add to augmented sample
-                self.X_augmented = np.concatenate((self.X_augmented, normMinMaxPerSamplePerBand(X0, min_per_image, max_per_image, back=True)), axis=0)
+                self.X_augmented = np.concatenate((self.X_augmented, normMinMaxPerSamplePerBand(X0, min_per_sample, max_per_sample, back=True)), axis=0)
                 # add data for the other variables
                 #self.region_ohe_augmented = np.tile(self.region_ohe_augmented, 2)
                 self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
@@ -177,10 +183,11 @@ class DG(object):
             # now denormalize back and add to sample
             self.y_augmented = np.concatenate((self.y_augmented, normMinMaxPerSamplePerBand(y0, min_per_crop, max_per_crop, back=True)), axis=0)
             # add data for the other variables
-            #self.region_id_augmented = np.tile(self.region_id_augmented, 2)
             self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (2, 1))
-            #self.groups_augmented = np.tile(self.groups_augmented, 2)
-            self.X_augmented = np.tile(self.X_augmented, (2,1,1,1))
+            if self.D == 1:
+                self.X_augmented = np.tile(self.X_augmented, (2, 1, 1))
+            elif self.D == 2:
+                self.X_augmented = np.tile(self.X_augmented, (2, 1, 1, 1))
         # adjust dimension of lenTS
         first = (cst.first_month_input_local_year) * 3
         return self.X_augmented[:,:,first:first+lenTS,:], self.region_ohe_augmented, self.y_augmented
