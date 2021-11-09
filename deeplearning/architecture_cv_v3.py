@@ -17,7 +17,7 @@ import json
 import matplotlib.pyplot as plt
 import datetime
 import global_variables
-
+from tensorflow.keras.models import clone_model
 
 
 
@@ -68,7 +68,7 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, nEpochs4Fi
 
 
     # Debugging
-    log = 'plot_loss'#'plot_loss' #'tensorboard' # 'plot_loss', 'none'
+    log = 'none'#'plot_loss' #'tensorboard' # 'plot_loss', 'none'
     # ---- variables
     # default if not passed
     n_epochs = train_params.setdefault("n_epochs", 70) #70
@@ -84,16 +84,19 @@ def cv_Model(model, X_train, ys_train, X_val, ys_val, out_model_file, nEpochs4Fi
     opt = optimizers.Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2)
     callback_list = []
 
+    # reload initial weights if the model was already trained
+    if global_variables.init_weights == None:
+        global_variables.init_weights = model.get_weights()
+    else:
+        model = clone_model(model)
+    # model.set_weights(global_variables.init_weights)
+
     model.compile(optimizer=opt,
                   loss={'out1': 'mse'},
                   loss_weights={'out1': 1.},
                   metrics=['mse'])
 
-    # reload initial weights if the model was already trained
-    if global_variables.init_weights == None:
-        global_variables.init_weights = model.get_weights()
-    else:
-        model.set_weights(global_variables.init_weights)
+
 
     # If validation data are provided we are in the inner loop and we are training on training data only,
     # if they are not provided we have completed the inner cv loop and we are fitting on train+val to predict the test
