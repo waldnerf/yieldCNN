@@ -18,14 +18,11 @@ fi
 
 
 echo Preprocess data
-#python preprocess_2D_inputs.py
 python preprocess_inputs.py --D 2
 
 echo Run Deep learning part
 # echo Delete old nohup
 # rm nohup.out
-
-
 
 #Michele tests 23 Sep 2021 update (fixed agparser bugs) * use -wandb to activate wandb loggin
 # Option 1: Norm by image, OHE, Yield
@@ -37,6 +34,17 @@ python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO -
 # Option 4: Norm by image, OHE, Yield, X aumentation, Y augmentation
 #nohup python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_SISO --target yield --Xshift --Xnoise --Ynoise & process_id=$!
 
+
+echo Copy log files
+cp $DIRCode/python.log $DIR/
+cp $DIRCode/launcher_2D_out.log $DIR/
+
+echo Syncing on S3
+aws s3 sync $DIR s3://ml4cast/leanyf
+#aws s3 cp $DIR s3://ml4cast/leanyf --recursive
+
+echo Shutting down machine
+sudo shutdown -h now
 
 # Franz's tests:
 # Option 1: Norm by image, OHE, Yield
@@ -64,13 +72,4 @@ python optimise_so_2D_architectures.py --normalisation norm --model 2DCNN_MISO -
 #wait $process_id
 #echo "Exit status: $?"
 
-echo Copy log files
-cp $DIRCode/python.log $DIR/
-cp $DIRCode/launcher_2D_out.log $DIR/
 
-echo Syncing on S3
-aws s3 sync $DIR s3://ml4cast/leanyf
-#aws s3 cp $DIR s3://ml4cast/leanyf --recursive
-
-echo Shutting down machine
-sudo shutdown -h now
