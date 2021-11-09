@@ -26,7 +26,7 @@ import datetime
 import sits.data_generator_1D2D as data_generator
 
 # global vars
-version = 'test_weights_int_0'
+version = 'v5'
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 dict_train_params = {
     'optuna_metric': 'rmse', #'rmse' or 'r2'
