@@ -79,6 +79,10 @@ class DG(object):
             # add unchanged data for the other variables
             self.region_ohe_augmented = np.tile(self.region_ohe_augmented, (5,1)) #repeat 5 times (original + 4 augmented) on axis 0
             self.y_augmented = np.tile(self.y_augmented, 5)
+            if self.D == 1 and True:
+                # check 1D augmentation
+                id2plt = 0 #slect one to check)
+
             if False:   #this is for checking 2d
                 variables = ['NDVI', 'Radiation', 'Rainfall', 'Temperature']
                 fig, axs = plt.subplots(2, 4, figsize=(16.5, 7))

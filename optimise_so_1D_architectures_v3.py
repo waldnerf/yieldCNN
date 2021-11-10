@@ -26,7 +26,7 @@ import datetime
 import sits.data_generator_1D2D as data_generator
 
 # global vars
-version = 'v5'
+version = '6bis'
 N_CHANNELS = 4  # -- NDVI, Rad, Rain, Temp
 dict_train_params = {
     'optuna_metric': 'rmse', #'rmse' or 'r2'
@@ -346,7 +346,7 @@ def objective_1DCNN(trial):
     fn_fig_val = global_variables.dir_tgt / f'trial_{trial.number}_{hpsString}_val.png'
     fn_fig_test = global_variables.dir_tgt / f'trial_{trial.number}_{hpsString}_test.png'
     fn_cv_test = global_variables.dir_tgt / f'trial_{trial.number}_{hpsString}_test.csv'
-    fn_report = global_variables.dir_tgt / f'AAA_report_{version}.csv'
+    fn_report = global_variables.dir_tgt / f'AAA_report_v{version}.csv'
     out_model_file = global_variables.dir_tgt / f'{out_model.split(".h5")[0]}_{crop_n}.h5'
 
     rmses_val, r2s_val, rmses_test, r2s_test = [], [], [], []
@@ -363,9 +363,7 @@ def objective_1DCNN(trial):
         global_variables.inner_cv_loop = 0
         # once the test is excluded, all the others are train and val
         train_val_i = [x for x in np.unique(groups) if x != test_i]
-        #TC
-        # Xt_test, Xv_test, y_test = readingsits1D.subset_data(Xt, region_ohe, y, groups == test_i)
-        # Xt_test = readingsits1D.reshape_data(Xt_test, N_CHANNELS)
+        # extract the test samples
         subset_bool = groups == test_i
         Xt_test, Xv_test, y_test = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
         # a validation loop on all 16 years of val is too long. We reduce to nPerTercile*3,
@@ -373,9 +371,9 @@ def objective_1DCNN(trial):
         # Here we assign a tercile to each year. As I have several admin units, I have first to compute avg yield by year
         if sampleTerciles:
             subset_bool = groups > 0 # take all
-            Xt_0, Xv_0, y_0 = Xt_[subset_bool, :, :], region_ohe[subset_bool, :], y[subset_bool]
-            #Xt_0, Xv_0, y_0 = readingsits1D.subset_data(Xt, region_ohe, y, groups > 0)  # take all
+            y_0 = y[subset_bool]
             df = pd.DataFrame({'group': groups, 'y': y_0})
+            # remove the test year
             df = df[df['group'] != test_i]
             df_avg_by_year = df.groupby('group', as_index=False)['y'].mean()
             q33 = df_avg_by_year['y'].quantile(0.33)

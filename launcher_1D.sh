@@ -27,7 +27,8 @@ echo Run Deep learning part
 # Option 1: 1DCNN_SISO
 
 # Option 2: 1DCNN_MISO
-python optimise_so_1D_architectures_v3.py --Xshift --Xnoise --Ynoise >> python.log
+#python optimise_so_1D_architectures_v3.py --Xshift --Xnoise --Ynoise >> python.log
+python optimise_so_1D_architectures_v3.py --Xshift --Xnoise --Ynoise 2>>&1 | tee python.log
 
 echo Copy log files
 cp $DIRCode/python.log $DIR/
